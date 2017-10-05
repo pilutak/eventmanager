@@ -19,6 +19,9 @@
 -export([stop/1]).
 
 start(_Type, _Args) ->
+	%application:set_env(mnesia, dir, "/var/lib/eventmanager/Mnesia"),
+	application:ensure_all_started(mnesia),
+	
     case em_sup:start_link() of
 	{ok, Pid} ->
 	    case em_interface_ocir:start_connection() of

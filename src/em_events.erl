@@ -19,19 +19,29 @@
 -include("../include/em.hrl").
 
 
+process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
+    Inside_command=em_utils:get_element_childs(RepData),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
+    UserId = em_utils:get_element_text(ServiceUserId),
+    em_db:add_user(UserId, virtual);
 
-process("GroupAutoAtendantAddInstanceRequest20", RepData, _State) ->
-    [ServiceUserId]=em_utils:get_elements(serviceUserId,em_utils:get_element_childs(RepData)),
-    io:format(ServiceUserId);
+    %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
+    %% Send request to EMA to create user, if there is publicID or phone in the event, 
+    %% make sure to update DB and send request to HSS / ENUM
+
     %em_utils:log(gen_server:call(em_interface_cai3g,{create_subscriber,em_utils:get_element_text(ServiceUserId)}));
-
 
 process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     Inside_command=em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
-
     S = em_utils:get_element_text(ServiceUserId),
     io:format("MyValue: ~p~n", [S]);
+    %em_db:add_user(S);
+
+    %% TO DO: Query the userId in the DB, if it exist, if it does not exist, ignore.
+    %% If it exist, and if phone or publicID is present in the event, query the DB to see if
+    %% there is any changes. If yes, update the DB and execute requests to EMA (HSS and ENUM)
+    
     %[ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile,Inside_command),
     %[PhoneNumber] = em_utils:get_elements(phoneNumber,em_utils:get_element_childs(ServiceInstanceProfile)),
     %[PublicUserIdentity] = em_utils:get_elements(publicUserIdentity,em_utils:get_element_childs(ServiceInstanceProfile)),
@@ -40,10 +50,20 @@ process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     %add_telURI(Have_PhoneNumber,em_utils:get_element_text(ServiceUserId),em_utils:get_element_text(PhoneNumber),State),
     %add_sipURI(Have_PublicUserIdentity,em_utils:get_element_text(ServiceUserId),em_utils:get_element_text(PublicUserIdentity),State);
 
-process("GroupAutoAttendantInstanceRequest", RepData, _State) ->
-    [ServiceUserId]=em_utils:get_elements(serviceUserId,em_utils:get_element_childs(RepData)),
-    io:format(ServiceUserId);
+process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
+    Inside_command=em_utils:get_element_childs(RepData),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
+    UserId = em_utils:get_element_text(ServiceUserId),
+    em_db:delete_user(UserId);
+
+    %% TO DO: Query userId in DB, if the user has e164, 
+    %% ENUM record must be deleted via EMA together with the HSS entry
+
+    %[ServiceUserId]=em_utils:get_elements(serviceUserId,em_utils:get_element_childs(RepData)),
+    %io:format(ServiceUserId);
     %em_utils:log(gen_server:call(em_interface_cai3g,{del_user,em_utils:get_element_text(ServiceUserId)}));
+
+
 
 process(_OtherThing, _RepData, _State) -> 
     ignored.
