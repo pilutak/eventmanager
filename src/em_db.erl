@@ -18,6 +18,7 @@
 -export([create_schema/0]).
 -export([add_user/2]).
 -export([delete_user/1]).
+-export([get_users/0]).
 
 
 -record(user, {user_id, pub_id, phone, type}).
@@ -63,3 +64,12 @@ delete_user(UserId)->
     end
   end,  
     mnesia:activity(transaction, F).
+
+
+ get_users() ->
+  F = fun() ->
+    Result = ['$1','$2', '$3', '$4'],
+    Task = #user{user_id = '$1', pub_id = '$2', phone = '$3', type = '$4'},
+    mnesia:select(user, [{Task, [], [Result]}])
+  end,
+  mnesia:activity(transaction, F).   
