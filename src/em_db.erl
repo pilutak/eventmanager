@@ -21,14 +21,15 @@
 -export([get_users/0]).
 
 
--record(user, {user_id, pub_id, phone, type}).
+-record(srd_user, {user_name, user_type, e164, sip_uri, group_id}).
+
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 create_schema() ->
-	application:set_env(mnesia, dir, "/var/lib/eventmanager/Mnesia"),
+	  application:set_env(mnesia, dir, "/var/lib/eventmanager"),
     mnesia:create_schema([node()]),
     application:ensure_all_started(mnesia),
     ok = create_tables(),
@@ -39,15 +40,15 @@ create_schema() ->
 create_tables() ->
    {atomic, ok} =
         mnesia:create_table(
-          user,
+          srd_user,
           [{disc_copies, [node()]},
            {type, bag},
-           {attributes, record_info(fields, user)}]),
+           {attributes, record_info(fields, srd_user)}]),
 	ok.
 
 
-add_user(UserId, Type)->
-	User = #user{user_id = UserId, type = Type},
+add_user(UserName, UserType)->
+	User = #srd_user{user_name = UserName, user_type = UserType},
 	F = fun () ->
 			mnesia:write(User)
 		end,
@@ -56,9 +57,9 @@ add_user(UserId, Type)->
 
 delete_user(UserId)->
   F = fun () ->
-    case mnesia:read({user, UserId}) =/= [] of
+    case mnesia:read({srd_user, UserId}) =/= [] of
       true ->
-        mnesia:delete({user, UserId});
+        mnesia:delete({srd_user, UserId});
       false ->
         undefined
     end
@@ -68,8 +69,8 @@ delete_user(UserId)->
 
  get_users() ->
   F = fun() ->
-    Result = ['$1','$2', '$3', '$4'],
-    Task = #user{user_id = '$1', pub_id = '$2', phone = '$3', type = '$4'},
-    mnesia:select(user, [{Task, [], [Result]}])
+    Result = ['$1','$2', '$3', '$4', '$5'],
+    User = #srd_user{user_name = '$1', user_type = '$2', e164 = '$3', sip_uri = '$4', group_id = '$5' },
+    mnesia:select(srd_user, [{User, [], [Result]}])
   end,
   mnesia:activity(transaction, F).   
