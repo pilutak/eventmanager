@@ -44,6 +44,7 @@ start_link(Host) ->
 
 
 init(Parent, Host) ->
+	application:set_env(mnesia, dir, "/var/lib/eventmanager"),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     register(list_to_atom(Host),self()),
     connect(#state{socket = undefined, host = Host}).
