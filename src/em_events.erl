@@ -21,9 +21,9 @@
 
 process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     Inside_command=em_utils:get_element_childs(RepData),
-    [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
-    UserId = em_utils:get_element_text(ServiceUserId),
-    em_db:add_user(UserId, virtual);
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, Inside_command),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    em_db:add_user(UserName, virtual);
 
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
@@ -33,14 +33,18 @@ process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
 
 process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     Inside_command=em_utils:get_element_childs(RepData),
-    [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
-    S = em_utils:get_element_text(ServiceUserId),
-    io:format("MyValue: ~p~n", [S]);
-    %em_db:add_user(S);
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, Inside_command),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, Inside_command),
+    [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
+    [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
+ 
+    UserName = em_utils:get_element_text(ServiceUserId),
+    SipUri = em_utils:get_element_text(PublicUserIdentity),
+    E164 = em_utils:get_element_text(PhoneNumber),
 
-    %% TO DO: Query the userId in the DB, if it exist, if it does not exist, ignore.
-    %% If it exist, and if phone or publicID is present in the event, query the DB to see if
-    %% there is any changes. If yes, update the DB and execute requests to EMA (HSS and ENUM)
+    modify_e164(E164, UserName, _State),
+    modify_sipuri(SipUri, UserName, _State);
+
     
     %[ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile,Inside_command),
     %[PhoneNumber] = em_utils:get_elements(phoneNumber,em_utils:get_element_childs(ServiceInstanceProfile)),
@@ -78,3 +82,16 @@ process(_OtherThing, _RepData, _State) ->
 %add_sipURI(true,ServiceUserId,PublicUserIdentity,_State)->
 %em_utils:log(gen_server:call(em_interface_cai3g,{add_sipURI,ServiceUserId,PublicUserIdentity})).
 
+modify_e164(undefined, _, _) -> 
+    % TODO: if e164 exist in SRD, delete e164 from HSS subscriber and ENUM, else ignore.
+    ignored;
+modify_e164(E164, UserName, _State) ->
+    % TODO: if e164 not exist in SRD, add e164 to HSS subscriber and ENUM, else ignore.  
+    io:format("e164 added: ~p~n ~p~n", [E164, UserName]).
+
+modify_sipuri(undefined, _, _) -> 
+    % TODO: if SipUri exist in SRD, delete SipUri from HSS subscriber, else ignore.
+    ignored;
+modify_sipuri(SipUri, UserName, _State) ->
+    % TODO: if SipUri not exist in SRD, add SipUri to HSS subscriber, else ignore.   
+    io:format("SipUri added: ~p~n ~p~n", [SipUri, UserName]).
