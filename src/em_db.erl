@@ -19,6 +19,8 @@
 -export([add_user/2]).
 -export([delete_user/1]).
 -export([get_users/0]).
+-export([set_e164/2]).
+-export([set_sipuri/2]).
 
 
 -record(srd_user, {user_name, user_type, e164, sip_uri, group_id}).
@@ -42,7 +44,7 @@ create_tables() ->
         mnesia:create_table(
           srd_user,
           [{disc_copies, [node()]},
-           {type, bag},
+           {type, set},
            {attributes, record_info(fields, srd_user)}]),
 	ok.
 
@@ -65,6 +67,32 @@ delete_user(UserId)->
     end
   end,  
     mnesia:activity(transaction, F).
+
+
+set_e164(UserId, E164)->
+  F = fun () ->
+    case mnesia:read({srd_user, UserId}) =:= [] of
+      true ->
+        undefined;
+      false ->
+        [R] = mnesia:wread({srd_user, UserId}),
+        mnesia:write(R#srd_user{e164 = E164})
+    end
+  end,
+    mnesia:activity(transaction, F).
+
+set_sipuri(UserId, SipUri)->
+  F = fun () ->
+    case mnesia:read({srd_user, UserId}) =:= [] of
+      true ->
+        undefined;
+      false ->
+        [R] = mnesia:wread({srd_user, UserId}),
+        mnesia:write(R#srd_user{sip_uri = SipUri})
+    end
+  end,
+    mnesia:activity(transaction, F).
+
 
 
  get_users() ->
