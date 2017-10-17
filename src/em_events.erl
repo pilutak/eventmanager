@@ -23,8 +23,8 @@ process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     Inside_command=em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, Inside_command),
     UserName = em_utils:get_element_text(ServiceUserId),
-    em_db:add_user(UserName, virtual);
 
+    add_user(UserName, _State);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
     %% make sure to update DB and send request to HSS / ENUM
@@ -57,9 +57,9 @@ process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
 process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
     Inside_command=em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
-    UserId = em_utils:get_element_text(ServiceUserId),
-    em_db:delete_user(UserId);
+    UserName = em_utils:get_element_text(ServiceUserId),
 
+    delete_user(UserName, _State);
     %% TO DO: Query userId in DB, if the user has e164, 
     %% ENUM record must be deleted via EMA together with the HSS entry
 
@@ -82,16 +82,37 @@ process(_OtherThing, _RepData, _State) ->
 %add_sipURI(true,ServiceUserId,PublicUserIdentity,_State)->
 %em_utils:log(gen_server:call(em_interface_cai3g,{add_sipURI,ServiceUserId,PublicUserIdentity})).
 
+add_user(UserName, _State) ->
+    em_db:add_user(UserName, virtual),
+    em_utils:log("User added to SRD"),
+    em_utils:log("HSS Subscriber created").
+
+
 modify_e164(undefined, _, _) -> 
     % TODO: if e164 exist in SRD, delete e164 from HSS subscriber and ENUM, else ignore.
     ignored;
 modify_e164(E164, UserName, _State) ->
-    % TODO: if e164 not exist in SRD, add e164 to HSS subscriber and ENUM, else ignore.  
+    % TODO: if e164 not exist in SRD, add e164 to HSS subscriber and ENUM, else ignore.
+    em_db:set_e164(UserName, E164),
     io:format("e164 added: ~p~n ~p~n", [E164, UserName]).
+
 
 modify_sipuri(undefined, _, _) -> 
     % TODO: if SipUri exist in SRD, delete SipUri from HSS subscriber, else ignore.
     ignored;
 modify_sipuri(SipUri, UserName, _State) ->
     % TODO: if SipUri not exist in SRD, add SipUri to HSS subscriber, else ignore.   
+    em_db:set_sipuri(UserName, SipUri),
     io:format("SipUri added: ~p~n ~p~n", [SipUri, UserName]).
+
+
+delete_user(undefined, _) -> 
+    % TODO: if e164 exist in SRD, delete e164 from HSS subscriber and ENUM, else ignore.
+    ignored;
+delete_user(UserName, _State) ->
+
+    %TODO: Get e164 and SipUri from SRD, then perform deletion
+    em_db:delete_user(UserName),
+    em_utils:log("User deleted from SRD"),
+    em_utils:log("HSS Subscriber deleted"),
+    em_utils:log("ENUM record deleted").
