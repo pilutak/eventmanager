@@ -8,3 +8,10 @@ ebin/*.beam
 rel/example_project
 .concrete/DEV_MODE
 .rebar
+
+.DS_Store
+.erlang.mk/
+FALLBACK.BUP
+include/.DS_Store
+src/.DS_Store
+*.log
