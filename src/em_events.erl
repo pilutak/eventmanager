@@ -39,11 +39,14 @@ process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
  
     UserName = em_utils:get_element_text(ServiceUserId),
-    SipUri = em_utils:get_element_text(PublicUserIdentity),
-    E164 = em_utils:get_element_text(PhoneNumber),
+    NewSipUri = em_utils:get_element_text(PublicUserIdentity),
+    NewE164 = em_utils:get_element_text(PhoneNumber),
 
-    modify_e164(E164, UserName, _State),
-    modify_sipuri(SipUri, UserName, _State);
+    SipUri = em_db:get_sipuri(UserName),
+    E164 = em_db:get_e164(UserName),
+
+    modify_e164(E164, NewE164, UserName, _State),
+    modify_sipuri(SipUri, NewSipUri, UserName, _State);
 
     
     %[ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile,Inside_command),
@@ -87,32 +90,26 @@ add_user(UserName, _State) ->
     em_utils:log("User added to SRD"),
     em_utils:log("HSS Subscriber created").
 
-
-modify_e164(undefined, _, _) -> 
-    % TODO: if e164 exist in SRD, delete e164 from HSS subscriber and ENUM, else ignore.
-    ignored;
-modify_e164(E164, UserName, _State) ->
-    % TODO: if e164 not exist in SRD, add e164 to HSS subscriber and ENUM, else ignore.
-    em_db:set_e164(UserName, E164),
-    io:format("e164 added: ~p~n ~p~n", [E164, UserName]).
-
-
-modify_sipuri(undefined, _, _) -> 
-    % TODO: if SipUri exist in SRD, delete SipUri from HSS subscriber, else ignore.
-    ignored;
-modify_sipuri(SipUri, UserName, _State) ->
-    % TODO: if SipUri not exist in SRD, add SipUri to HSS subscriber, else ignore.   
-    em_db:set_sipuri(UserName, SipUri),
-    io:format("SipUri added: ~p~n ~p~n", [SipUri, UserName]).
-
-
-delete_user(undefined, _) -> 
-    % TODO: if e164 exist in SRD, delete e164 from HSS subscriber and ENUM, else ignore.
-    ignored;
 delete_user(UserName, _State) ->
-
-    %TODO: Get e164 and SipUri from SRD, then perform deletion
     em_db:delete_user(UserName),
     em_utils:log("User deleted from SRD"),
     em_utils:log("HSS Subscriber deleted"),
     em_utils:log("ENUM record deleted").
+
+modify_e164(undefined, undefined, _, _) -> 
+    ignored;
+modify_e164(E164, E164, _, _State) ->
+    ignored;
+modify_e164(undefined, NewE164, UserName, _) -> 
+    em_db:set_e164(UserName, NewE164),
+modify_e164(E164, undefined, UserName, _State) ->
+    em_db:set_e164(UserName, undefined),
+
+modify_sipuri(undefined, undefined, _, _) -> 
+    ignored;
+modify_sipuri(SipUri, SipUri, _, _State) ->
+    ignored;
+modify_sipuri(undefined, NewSipUri, UserName, _) -> 
+    em_db:set_sipuri(UserName, NewSipUri),
+modify_sipuri(SipUri, undefined, UserName, _State) ->
+    em_db:set_sipuri(UserName, undefined).
