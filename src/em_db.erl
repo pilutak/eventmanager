@@ -21,6 +21,8 @@
 -export([get_users/0]).
 -export([set_e164/2]).
 -export([set_sipuri/2]).
+-export([get_e164/1]).
+-export([get_sipuri/1]).
 
 
 -record(srd_user, {user_name, user_type, e164, sip_uri, group_id}).
@@ -80,6 +82,33 @@ set_e164(UserId, E164)->
     end
   end,
     mnesia:activity(transaction, F).
+
+
+get_e164(UserId) ->
+  F = fun() ->
+    case mnesia:read({srd_user, UserId}) of
+    
+    [#srd_user{e164=E}] ->
+      E;
+    [] ->
+      undefined
+    end
+  end,
+mnesia:activity(transaction, F).
+
+
+get_sipuri(UserId) ->
+  F = fun() ->
+    case mnesia:read({srd_user, UserId}) of
+    
+    [#srd_user{sip_uri=S}] ->
+      S;
+    [] ->
+      undefined
+    end
+  end,
+mnesia:activity(transaction, F).
+
 
 set_sipuri(UserId, SipUri)->
   F = fun () ->
