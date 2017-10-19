@@ -14,6 +14,8 @@
 
 -module(em_utils).
 
+-include_lib("xmerl/include/xmerl.hrl").
+
 %% API
 -export([scan/3,get_type_message/1,get_cdata/1,get_command_type/1,get_elements/2,get_element_attributes/2]).
 -export([get_element_childs/1,get_element_name/1,get_element_text/1]).
@@ -51,11 +53,18 @@ get_element_name(_)->undefined.
 get_element_text({xmlElement,_,_,_,_,_,_,_,[{xmlText,_,_,_,Value,text}],_,_,_})->Value;
 get_element_text(_)->undefined.
 
-get_elements(_,[])->[];
-get_elements(Name,[{xmlElement,Name,Name,Nsinfo,Namespace,Parents,Pos,
-                    Attributes,Content,Lenguage,Xmlbase,ElementDef}|Rest])->
-                  [{xmlElement,Name,Name,Nsinfo,Namespace,Parents,Pos,
-                    Attributes,Content,Lenguage,Xmlbase,ElementDef}|get_elements(Name,Rest)];
+
+
+%get_elements(_,[])->[];
+%get_elements(Name,[{xmlElement,Name,Name,Nsinfo,Namespace,Parents,Pos,
+%                    Attributes,Content,Lenguage,Xmlbase,ElementDef}|Rest])->
+%                  [{xmlElement,Name,Name,Nsinfo,Namespace,Parents,Pos,
+%                    Attributes,Content,Lenguage,Xmlbase,ElementDef}|get_elements(Name,Rest)];
+%get_elements(Name,[_|Rest])->get_elements(Name,Rest).
+
+get_elements(_,undefined)->[undefined]; 
+get_elements(_,[])->[];         
+get_elements(Name,[#xmlElement{name = Name}=E|Rest])-> [E|get_elements(Name,Rest)];
 get_elements(Name,[_|Rest])->get_elements(Name,Rest).
 
 
@@ -65,7 +74,12 @@ get_element_attributes(Name,[_|Rest])->get_element_attributes(Name,Rest);
 get_element_attributes(_,_)->undefined.
 
 
-get_element_childs(XmlElement)->{xmlElement,_,_,_,_,_,_,_,Childs,_,_,_}=XmlElement,Childs.
+get_element_childs(undefined)->undefined; 
+get_element_childs([])->undefined; 
+get_element_childs(#xmlElement{content = []})->undefined;
+get_element_childs(#xmlElement{content = Childs})->Childs.
+
+%get_element_childs(XmlElement)->{xmlElement,_,_,_,_,_,_,_,Childs,_,_,_}=XmlElement,Childs.
 
 log(Term)->
     {ok,S} = file:open("em2.log",[append]),
