@@ -24,7 +24,7 @@ process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     [ServiceUserId] = em_utils:get_elements(serviceUserId, Inside_command),
     UserName = em_utils:get_element_text(ServiceUserId),
 
-    add_user(UserName, _State);
+    add_user(UserName, 'virtual-user', _State);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
     %% make sure to update DB and send request to HSS / ENUM
@@ -71,6 +71,46 @@ process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
     %em_utils:log(gen_server:call(em_interface_cai3g,{del_user,em_utils:get_element_text(ServiceUserId)}));
 
 
+process("UserAddRequest17sp4", RepData, _State) ->
+    Inside_command=em_utils:get_element_childs(RepData),
+    %[G] = em_utils:get_elements(groupId, Inside_command),
+    [U] = em_utils:get_elements(userId, Inside_command),
+
+    %GroupId = em_utils:get_element_text(G),
+    UserName = em_utils:get_element_text(U),
+    add_user(UserName, 'end-user', _State);
+
+
+process("UserModifyRequest17sp4", RepData, _State) ->
+    Inside_command=em_utils:get_element_childs(RepData),
+    [U] = em_utils:get_elements(userId, Inside_command),
+    [P] = em_utils:get_elements(phoneNumber, Inside_command),
+
+    [E] = em_utils:get_elements(endpoint, Inside_command),
+    [A] = em_utils:get_elements(accessDeviceEndpoint, em_utils:get_element_childs(E)),
+    [L] = em_utils:get_elements(linePort, em_utils:get_element_childs(A)),
+
+    UserName = em_utils:get_element_text(U),
+    NewE164 = em_utils:get_element_text(P),
+    NewSipUri = em_utils:get_element_text(L),
+    E164 = em_db:get_e164(UserName),
+    SipUri = em_db:get_sipuri(UserName),
+
+    modify_e164(E164, NewE164, UserName, _State),
+    modify_sipuri(SipUri, NewSipUri, UserName, _State);
+
+
+
+process("UserDeleteRequest", RepData, _State) ->
+    Inside_command=em_utils:get_element_childs(RepData),
+    %[G] = em_utils:get_elements(groupId, Inside_command),
+    [U] = em_utils:get_elements(userId, Inside_command),
+
+    %GroupId = em_utils:get_element_text(G),
+    UserName = em_utils:get_element_text(U),
+    delete_user(UserName, _State);
+
+
 
 process(_OtherThing, _RepData, _State) -> 
     ignored.
@@ -85,8 +125,8 @@ process(_OtherThing, _RepData, _State) ->
 %add_sipURI(true,ServiceUserId,PublicUserIdentity,_State)->
 %em_utils:log(gen_server:call(em_interface_cai3g,{add_sipURI,ServiceUserId,PublicUserIdentity})).
 
-add_user(UserName, _State) ->
-    em_db:add_user(UserName, virtual),
+add_user(UserName, Type, _State) ->
+    em_db:add_user(UserName, Type),
     em_utils:log("User added to SRD"),
     em_utils:log("HSS Subscriber created").
 
@@ -101,15 +141,15 @@ modify_e164(undefined, undefined, _, _) ->
 modify_e164(E164, E164, _, _State) ->
     ignored;
 modify_e164(undefined, NewE164, UserName, _) -> 
-    em_db:set_e164(UserName, NewE164),
-modify_e164(E164, undefined, UserName, _State) ->
-    em_db:set_e164(UserName, undefined),
+    em_db:set_e164(UserName, NewE164);
+modify_e164(_E164, undefined, UserName, _State) ->
+    em_db:set_e164(UserName, undefined).
 
 modify_sipuri(undefined, undefined, _, _) -> 
     ignored;
 modify_sipuri(SipUri, SipUri, _, _State) ->
     ignored;
 modify_sipuri(undefined, NewSipUri, UserName, _) -> 
-    em_db:set_sipuri(UserName, NewSipUri),
-modify_sipuri(SipUri, undefined, UserName, _State) ->
+    em_db:set_sipuri(UserName, NewSipUri);
+modify_sipuri(_SipUri, undefined, UserName, _State) ->
     em_db:set_sipuri(UserName, undefined).
