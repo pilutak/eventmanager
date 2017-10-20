@@ -20,8 +20,8 @@
 
 
 process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
-    Inside_command=em_utils:get_element_childs(RepData),
-    [ServiceUserId] = em_utils:get_elements(serviceUserId, Inside_command),
+    InsideCommand = em_utils:get_element_childs(RepData),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
 
     add_user(UserName, 'virtual-user', _State);
@@ -32,9 +32,9 @@ process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     %em_utils:log(gen_server:call(em_interface_cai3g,{create_subscriber,em_utils:get_element_text(ServiceUserId)}));
 
 process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
-    Inside_command=em_utils:get_element_childs(RepData),
-    [ServiceUserId] = em_utils:get_elements(serviceUserId, Inside_command),
-    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, Inside_command),
+    InsideCommand = em_utils:get_element_childs(RepData),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
     [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
  
@@ -58,10 +58,9 @@ process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     %add_sipURI(Have_PublicUserIdentity,em_utils:get_element_text(ServiceUserId),em_utils:get_element_text(PublicUserIdentity),State);
 
 process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
-    Inside_command=em_utils:get_element_childs(RepData),
-    [ServiceUserId] = em_utils:get_elements(serviceUserId,Inside_command),
+    InsideCommand = em_utils:get_element_childs(RepData),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
-
     delete_user(UserName, _State);
     %% TO DO: Query userId in DB, if the user has e164, 
     %% ENUM record must be deleted via EMA together with the HSS entry
@@ -72,9 +71,9 @@ process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
 
 
 process("UserAddRequest17sp4", RepData, _State) ->
-    Inside_command=em_utils:get_element_childs(RepData),
+    InsideCommand = em_utils:get_element_childs(RepData),
     %[G] = em_utils:get_elements(groupId, Inside_command),
-    [U] = em_utils:get_elements(userId, Inside_command),
+    [U] = em_utils:get_elements(userId, InsideCommand),
 
     %GroupId = em_utils:get_element_text(G),
     UserName = em_utils:get_element_text(U),
@@ -82,34 +81,43 @@ process("UserAddRequest17sp4", RepData, _State) ->
 
 
 process("UserModifyRequest17sp4", RepData, _State) ->
-    Inside_command=em_utils:get_element_childs(RepData),
-    [U] = em_utils:get_elements(userId, Inside_command),
-    [P] = em_utils:get_elements(phoneNumber, Inside_command),
+    InsideCommand = em_utils:get_element_childs(RepData),
+    [U] = em_utils:get_elements(userId, InsideCommand),
+    [P] = em_utils:get_elements(phoneNumber, InsideCommand),
 
-    [E] = em_utils:get_elements(endpoint, Inside_command),
+    % Fetch endpoint data
+    [E] = em_utils:get_elements(endpoint, InsideCommand),
     [A] = em_utils:get_elements(accessDeviceEndpoint, em_utils:get_element_childs(E)),
     [L] = em_utils:get_elements(linePort, em_utils:get_element_childs(A)),
 
+    % Fecth endpoint Trunk data
+    [F] = em_utils:get_elements(endpoint, InsideCommand),
+    [T] = em_utils:get_elements(trunkAddressing, em_utils:get_element_childs(F)),
+    [TG] = em_utils:get_elements(trunkGroupDeviceEndpoint, em_utils:get_element_childs(T)),
+
+    [LP] = em_utils:get_elements(linePort, em_utils:get_element_childs(TG)),
+
+    TrunkLinePort = em_utils:get_element_text(LP),
+    io:format("Trunk LinePort: ~p~n",[TrunkLinePort]),
+
     UserName = em_utils:get_element_text(U),
-    NewE164 = em_utils:get_element_text(P),
-    NewSipUri = em_utils:get_element_text(L),
     E164 = em_db:get_e164(UserName),
+    NewE164 = em_utils:get_element_text(P),
     SipUri = em_db:get_sipuri(UserName),
+    NewSipUri = em_utils:get_element_text(L),
 
     modify_e164(E164, NewE164, UserName, _State),
     modify_sipuri(SipUri, NewSipUri, UserName, _State);
 
 
-
 process("UserDeleteRequest", RepData, _State) ->
-    Inside_command=em_utils:get_element_childs(RepData),
+    InsideCommand = em_utils:get_element_childs(RepData),
     %[G] = em_utils:get_elements(groupId, Inside_command),
-    [U] = em_utils:get_elements(userId, Inside_command),
+    [U] = em_utils:get_elements(userId, InsideCommand),
 
     %GroupId = em_utils:get_element_text(G),
     UserName = em_utils:get_element_text(U),
     delete_user(UserName, _State);
-
 
 
 process(_OtherThing, _RepData, _State) -> 
