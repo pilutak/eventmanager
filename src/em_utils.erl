@@ -54,18 +54,14 @@ get_element_text({xmlElement,_,_,_,_,_,_,_,[{xmlText,_,_,_,Value,text}],_,_,_})-
 get_element_text(_)->undefined.
 
 
-
-%get_elements(_,[])->[];
-%get_elements(Name,[{xmlElement,Name,Name,Nsinfo,Namespace,Parents,Pos,
-%                    Attributes,Content,Lenguage,Xmlbase,ElementDef}|Rest])->
-%                  [{xmlElement,Name,Name,Nsinfo,Namespace,Parents,Pos,
-%                    Attributes,Content,Lenguage,Xmlbase,ElementDef}|get_elements(Name,Rest)];
-%get_elements(Name,[_|Rest])->get_elements(Name,Rest).
-
-get_elements(_,undefined)->[undefined]; 
-get_elements(_,[])->[];         
-get_elements(Name,[#xmlElement{name = Name}=E|Rest])-> [E|get_elements(Name,Rest)];
-get_elements(Name,[_|Rest])->get_elements(Name,Rest).
+get_elements(_,undefined)->[undefined];
+get_elements(Name,List)->
+  F= fun
+        (#xmlElement{name = ItemName}=E,[undefined]) when ItemName == Name -> [E];
+        (#xmlElement{name = ItemName}=E,Acc) when ItemName == Name -> [E|Acc];
+        (_,Acc) -> Acc
+      end,
+  lists:foldl(F,[undefined],List).
 
 
 get_element_attributes(Name,{xmlElement,_,_,_,_,_,_,Attribute_list,_,_,_,_})->get_element_attributes(Name,Attribute_list);
@@ -79,7 +75,6 @@ get_element_childs([])->undefined;
 get_element_childs(#xmlElement{content = []})->undefined;
 get_element_childs(#xmlElement{content = Childs})->Childs.
 
-%get_element_childs(XmlElement)->{xmlElement,_,_,_,_,_,_,_,Childs,_,_,_}=XmlElement,Childs.
 
 log(Term)->
     {ok,S} = file:open("em2.log",[append]),
