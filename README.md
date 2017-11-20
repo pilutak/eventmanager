@@ -1,6 +1,6 @@
 # eventmanager
 
-###How to run:
+### How to run:
 
 ```
 erl -pa ebin -mnesia dir '"/var/lib/eventmanager"'
