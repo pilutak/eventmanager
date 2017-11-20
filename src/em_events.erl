@@ -120,6 +120,31 @@ process("UserDeleteRequest", RepData, _State) ->
     delete_user(UserName, _State);
 
 
+process("GroupTrunkGroupAddInstanceRequest21", RepData, _State) ->
+    InsideCommand = em_utils:get_element_childs(RepData),
+    %[GroupId] = em_utils:get_elements(groupId, InsideCommand),
+
+    [PilotUser] = em_utils:get_elements(pilotUser, InsideCommand),
+    [UserId] = em_utils:get_elements(userId, em_utils:get_element_childs(PilotUser)),
+    [Password] = em_utils:get_elements(password, em_utils:get_element_childs(PilotUser)),
+    [LinePort] = em_utils:get_elements(linePort, em_utils:get_element_childs(PilotUser)),
+ 
+    NewUserId = em_utils:get_element_text(UserId),
+    _NewPassword = em_utils:get_element_text(Password),
+    _NewLinePort = em_utils:get_element_text(LinePort),
+
+    io:format("Pilot UserId: ~p~n",[NewUserId]);
+
+process("GroupTrunkGroupModifyInstanceRequest20sp1", _RepData, _State) ->
+    %% TODO: Investigate what to be done!
+    %% What to do on <pilotUserId xsi:nil="true" />
+    ignored;
+
+process("GroupTrunkGroupDeleteInstanceRequest14sp4", _RepData, _State) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+
+
 process(_OtherThing, _RepData, _State) -> 
     ignored.
 
