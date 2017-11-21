@@ -22,9 +22,11 @@
 process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+	[GroupId] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
+	GrpId = em_utils:get_element_text(GroupId),
 
-    add_user(UserName, 'virtual-user', _State);
+    add_user(UserName, GrpId, 'virtual-user', _State);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
     %% make sure to update DB and send request to HSS / ENUM
@@ -74,10 +76,12 @@ process("UserAddRequest17sp4", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     %[G] = em_utils:get_elements(groupId, Inside_command),
     [U] = em_utils:get_elements(userId, InsideCommand),
+	[G] = em_utils:get_elements(groupId, InsideCommand),
 
     %GroupId = em_utils:get_element_text(G),
     UserName = em_utils:get_element_text(U),
-    add_user(UserName, 'end-user', _State);
+	GrpId = em_utils:get_element_text(G),
+    add_user(UserName, GrpId, 'end-user', _State);
 
 
 process("UserModifyRequest17sp4", RepData, _State) ->
@@ -158,8 +162,8 @@ process(_OtherThing, _RepData, _State) ->
 %add_sipURI(true,ServiceUserId,PublicUserIdentity,_State)->
 %em_utils:log(gen_server:call(em_interface_cai3g,{add_sipURI,ServiceUserId,PublicUserIdentity})).
 
-add_user(UserName, Type, _State) ->
-    em_db:add_user(UserName, Type),
+add_user(UserName, GrpId, Type, _State) ->
+    em_db:add_user(UserName, GrpId, Type),
     em_utils:log("User added to SRD"),
     em_utils:log("HSS Subscriber created").
 
