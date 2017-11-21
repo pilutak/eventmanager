@@ -16,9 +16,10 @@
  
 %% API
 -export([create_schema/0]).
--export([add_user/2]).
+-export([add_user/3]).
 -export([delete_user/1]).
 -export([get_users/0]).
+-export([get_group/1]).
 -export([set_e164/2]).
 -export([set_sipuri/2]).
 -export([get_e164/1]).
@@ -26,6 +27,7 @@
 
 
 -record(srd_user, {user_name, user_type, e164, sip_uri, group_id}).
+-record(srd_group, {group_id, user_name}).
 
 
 %%%===================================================================
@@ -48,22 +50,32 @@ create_tables() ->
           [{disc_copies, [node()]},
            {type, set},
            {attributes, record_info(fields, srd_user)}]),
+	{atomic, ok} =
+		mnesia:create_table(
+		  srd_group,
+		  [{disc_copies, [node()]},
+		   {type, set},
+		   {attributes, record_info(fields, srd_group)}]),
 	ok.
 
-
-add_user(UserName, UserType)->
-	User = #srd_user{user_name = UserName, user_type = UserType},
+% TODO: Make a chec if user already exist, then return error
+add_user(UserName, GrpId, UserType)->
+	User = #srd_user{user_name = UserName, user_type = UserType, group_id = GrpId},
+	Group = #srd_group{group_id = GrpId, user_name = UserName},
 	F = fun () ->
-			mnesia:write(User)
+			mnesia:write(User),
+			mnesia:write(Group)
 		end,
     mnesia:activity(transaction, F).
 
 
 delete_user(UserId)->
+  GrpId = get_group(UserId),
   F = fun () ->
     case mnesia:read({srd_user, UserId}) =/= [] of
       true ->
-        mnesia:delete({srd_user, UserId});
+        mnesia:delete({srd_user, UserId}),
+		mnesia:delete({srd_group, GrpId});
       false ->
         undefined
     end
@@ -89,6 +101,20 @@ get_e164(UserId) ->
     case mnesia:read({srd_user, UserId}) of
     
     [#srd_user{e164=E}] ->
+      E;
+    [] ->
+      undefined
+    end
+  end,
+mnesia:activity(transaction, F).
+
+
+
+get_group(UserId) ->
+  F = fun() ->
+    case mnesia:read({srd_user, UserId}) of
+    
+    [#srd_user{group_id=E}] ->
       E;
     [] ->
       undefined
