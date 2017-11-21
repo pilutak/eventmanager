@@ -18,7 +18,7 @@
 -export([create_schema/0]).
 -export([add_user/3]).
 -export([delete_user/1]).
--export([get_users/0]).
+-export([get_users/1]).
 -export([get_group/1]).
 -export([set_e164/2]).
 -export([set_sipuri/2]).
@@ -54,7 +54,7 @@ create_tables() ->
 		mnesia:create_table(
 		  srd_group,
 		  [{disc_copies, [node()]},
-		   {type, set},
+		   {type, bag},
 		   {attributes, record_info(fields, srd_group)}]),
 	ok.
 
@@ -150,10 +150,18 @@ set_sipuri(UserId, SipUri)->
 
 
 
- get_users() ->
+% get_users() ->
+%  F = fun() ->
+%    Result = ['$1','$2', '$3', '$4', '$5'],
+%    User = #srd_user{user_name = '$1', user_type = '$2', e164 = '$3', sip_uri = '$4', group_id = '$5' },
+%    mnesia:select(srd_user, [{User, [], [Result]}])
+%  end,
+%  mnesia:activity(transaction, F).   
+
+ get_users(GrpId) ->
   F = fun() ->
-    Result = ['$1','$2', '$3', '$4', '$5'],
-    User = #srd_user{user_name = '$1', user_type = '$2', e164 = '$3', sip_uri = '$4', group_id = '$5' },
-    mnesia:select(srd_user, [{User, [], [Result]}])
+    Result = '$1',
+    User = #srd_group{group_id = GrpId, user_name = '$1'},
+    mnesia:select(srd_group, [{User, [], [Result]}])
   end,
-  mnesia:activity(transaction, F).   
+  mnesia:activity(transaction, F).  
