@@ -19,7 +19,6 @@
 -export([add_user/3]).
 -export([delete_user/1]).
 -export([get_users/1]).
--export([get_group/1]).
 -export([set_e164/2]).
 -export([set_sipuri/2]).
 -export([get_e164/1]).
@@ -27,15 +26,13 @@
 
 
 -record(srd_user, {user_name, user_type, e164, sip_uri, group_id}).
--record(srd_group, {group_id, user_name}).
-
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 create_schema() ->
-	  application:set_env(mnesia, dir, "/var/lib/eventmanager"),
+    application:set_env(mnesia, dir, "/var/lib/eventmanager"),
     mnesia:create_schema([node()]),
     application:ensure_all_started(mnesia),
     ok = create_tables(),
@@ -44,124 +41,92 @@ create_schema() ->
     application:stop(mnesia).
 
 create_tables() ->
-   {atomic, ok} =
-        mnesia:create_table(
-          srd_user,
-          [{disc_copies, [node()]},
-           {type, set},
-           {attributes, record_info(fields, srd_user)}]),
-	{atomic, ok} =
-		mnesia:create_table(
-		  srd_group,
-		  [{disc_copies, [node()]},
-		   {type, bag},
-		   {attributes, record_info(fields, srd_group)}]),
-	ok.
+    {atomic, ok} = mnesia:create_table(
+        srd_user,
+        [{disc_copies, [node()]},
+        {type, set},
+        {attributes, record_info(fields, srd_user)}]),
+        ok.
 
-% TODO: Make a chec if user already exist, then return error
 add_user(UserName, GrpId, UserType)->
-	User = #srd_user{user_name = UserName, user_type = UserType, group_id = GrpId},
-	Group = #srd_group{group_id = GrpId, user_name = UserName},
-	F = fun () ->
-			mnesia:write(User),
-			mnesia:write(Group)
-		end,
+    User = #srd_user{user_name = UserName, user_type = UserType, group_id = GrpId},
+    F = fun () ->
+        case mnesia:read({srd_user, UserName}) =:= [] of
+            true -> 
+                mnesia:write(User);
+            false ->   
+                exists
+        end
+    end,
     mnesia:activity(transaction, F).
 
 
 delete_user(UserId)->
-  GrpId = get_group(UserId),
-  F = fun () ->
-    case mnesia:read({srd_user, UserId}) =/= [] of
-      true ->
-        mnesia:delete({srd_user, UserId}),
-		mnesia:delete({srd_group, GrpId});
-      false ->
-        undefined
-    end
-  end,  
+    F = fun () ->
+        case mnesia:read({srd_user, UserId}) =/= [] of
+            true ->
+                mnesia:delete({srd_user, UserId});
+            false ->
+                undefined
+        end
+    end,
     mnesia:activity(transaction, F).
 
 
 set_e164(UserId, E164)->
-  F = fun () ->
-    case mnesia:read({srd_user, UserId}) =:= [] of
-      true ->
-        undefined;
-      false ->
-        [R] = mnesia:wread({srd_user, UserId}),
-        mnesia:write(R#srd_user{e164 = E164})
-    end
-  end,
+    F = fun () ->
+        case mnesia:read({srd_user, UserId}) =:= [] of
+            true ->
+                undefined;
+            false ->
+                [R] = mnesia:wread({srd_user, UserId}),
+                mnesia:write(R#srd_user{e164 = E164})
+        end
+    end,
     mnesia:activity(transaction, F).
 
 
 get_e164(UserId) ->
-  F = fun() ->
-    case mnesia:read({srd_user, UserId}) of
-    
-    [#srd_user{e164=E}] ->
-      E;
-    [] ->
-      undefined
-    end
-  end,
-mnesia:activity(transaction, F).
-
-
-
-get_group(UserId) ->
-  F = fun() ->
-    case mnesia:read({srd_user, UserId}) of
-    
-    [#srd_user{group_id=E}] ->
-      E;
-    [] ->
-      undefined
-    end
-  end,
-mnesia:activity(transaction, F).
-
-
-get_sipuri(UserId) ->
-  F = fun() ->
-    case mnesia:read({srd_user, UserId}) of
-    
-    [#srd_user{sip_uri=S}] ->
-      S;
-    [] ->
-      undefined
-    end
-  end,
-mnesia:activity(transaction, F).
-
-
-set_sipuri(UserId, SipUri)->
-  F = fun () ->
-    case mnesia:read({srd_user, UserId}) =:= [] of
-      true ->
-        undefined;
-      false ->
-        [R] = mnesia:wread({srd_user, UserId}),
-        mnesia:write(R#srd_user{sip_uri = SipUri})
-    end
-  end,
+    F = fun() ->
+        case mnesia:read({srd_user, UserId}) of  
+            [#srd_user{e164=E}] ->
+                E;
+            [] ->
+                undefined
+        end
+    end,
     mnesia:activity(transaction, F).
 
 
+get_sipuri(UserId) ->
+    F = fun() ->
+        case mnesia:read({srd_user, UserId}) of 
+            [#srd_user{sip_uri=S}] ->
+                S;
+            [] ->
+                undefined
+        end
+    end,
+    mnesia:activity(transaction, F).
 
-% get_users() ->
-%  F = fun() ->
-%    Result = ['$1','$2', '$3', '$4', '$5'],
-%    User = #srd_user{user_name = '$1', user_type = '$2', e164 = '$3', sip_uri = '$4', group_id = '$5' },
-%    mnesia:select(srd_user, [{User, [], [Result]}])
-%  end,
-%  mnesia:activity(transaction, F).   
 
- get_users(GrpId) ->
-  F = fun() ->
-    Result = '$1',
-    User = #srd_group{group_id = GrpId, user_name = '$1'},
-    mnesia:select(srd_group, [{User, [], [Result]}])
-  end,
-  mnesia:activity(transaction, F).  
+set_sipuri(UserId, SipUri)->
+    F = fun () ->
+        case mnesia:read({srd_user, UserId}) =:= [] of
+            true ->
+                undefined;
+            false ->
+                [R] = mnesia:wread({srd_user, UserId}),
+                mnesia:write(R#srd_user{sip_uri = SipUri})
+        end
+    end,
+    mnesia:activity(transaction, F).
+
+
+get_users(GrpId) ->
+    F = fun() ->
+        Result = '$1',
+        User = #srd_user{user_name = '$1', group_id = GrpId, _ = '_'},
+        mnesia:select(srd_user, [{User, [], [Result]}])
+    end,
+    mnesia:activity(transaction, F).

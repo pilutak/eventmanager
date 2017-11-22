@@ -149,6 +149,19 @@ process("GroupTrunkGroupDeleteInstanceRequest14sp4", _RepData, _State) ->
     ignored;
 
 
+process("GroupDeleteRequest", RepData, _State) ->
+    InsideCommand = em_utils:get_element_childs(RepData),
+    [G] = em_utils:get_elements(groupId, InsideCommand),
+    GroupId = em_utils:get_element_text(G),
+
+    Users = em_db:get_users(GroupId),
+
+    lists:foreach(
+        fun(I) ->
+            delete_user(I, _State)
+        end, Users);
+ 
+
 process(_OtherThing, _RepData, _State) -> 
     ignored.
 
