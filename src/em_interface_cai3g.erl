@@ -13,97 +13,57 @@
 %% limitations under the License.
 
 -module(em_interface_cai3g).
-
--behaviour(gen_server).
-
-%% API
--export([start_link/0]).
--import(em_interface_cai3g_envelopes,[env_login/2,env_create_hss_subscriber/2,env_logout/1,env_add_hss_tel_uri/3]).
--import(em_interface_cai3g_envelopes,[env_add_hss_sip_uri/3,env_delete_hss_subscriber/2]).
--import(em_interface_cai3g_parser,[login_response/1,logout_response/1]).
 -include("../include/em.hrl").
 
-%% gen_server callbacks
--export([init/1,
-  handle_call/3,
-  handle_cast/2,
-  handle_info/2,
-  terminate/2,
-  code_change/3]).
+ 
+%% API
+-export([create_subscriber/2]).
+-export([delete_subscriber/1]).
+-export([login/2]).
+-export([send/1]).
 
--define(SERVER, ?MODULE).
-
--record(state, {
-  ema_url,
-  ema_user,
-  ema_pass,
-  reconnect_delay,
-  timeout
-}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
+create_subscriber(UserId, ConfServiceProfile) -> 
+    {ok,SessionId} = login(sogadm,sogadm),
+    _Response = send(em_interface_cai3g_envelopes:env_create_hss_subscriber(SessionId, UserId, ConfServiceProfile)),
+    {ok,_} = logout(SessionId).
 
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+delete_subscriber(UserId) -> 
+    {ok,SessionId} = login(sogadm,sogadm),
+    _Response = send(em_interface_cai3g_envelopes:env_delete_hss_subscriber(SessionId, UserId)),
+    {ok,_} = logout(SessionId).
 
-init([]) ->
-  {ok, #state{ema_url = ?EMA_URL,ema_user = ?EMA_UserID, ema_pass = ?EMA_Pass, reconnect_delay = ?RECONNECT_DELAY, timeout = ?EMA_CONNECTION_TIMEOUT }}.
-
-handle_call({create_subscriber,UserId}, _From, State) ->
-  {ok,SessionId} = login(State),
-  Response =send(env_create_hss_subscriber(SessionId,UserId),State),
-  {ok,SessionId} = logout(SessionId,State),
-  {reply, Response, State};
-
-
-handle_call({add_telURI,ServiceUserId,PhoneNumber}, _From, State) ->
-  {ok,SessionId} = login(State),
-  Response =send(env_add_hss_tel_uri(SessionId,ServiceUserId,PhoneNumber),State),
-  {ok,SessionId} = logout(SessionId,State),
-  {reply, Response, State};
-
-handle_call({add_sipURI,ServiceUserId,PublicUserIdentity}, _From, State) ->
-  {ok,SessionId} = login(State),
-  Response =send(env_add_hss_sip_uri(SessionId,ServiceUserId,PublicUserIdentity),State),
-  {ok,SessionId} = logout(SessionId,State),
-  {reply, Response, State};
-
-handle_call({del_user,ServiceUserId}, _From, State) ->
-  {ok,SessionId} = login(State),
-  Response =send(env_delete_hss_subscriber(SessionId,ServiceUserId),State),
-  {ok,SessionId} = logout(SessionId,State),
-  {reply, Response, State};
-
-
-handle_call(_Request, _From, State) ->
-  {reply, ok, State}.
-
-handle_cast(_Request, State) ->
-  {noreply, State}.
-
-handle_info(_Info, State) ->
-  {noreply, State}.
-
-terminate(_Reason, _State) ->
-  ok.
-
-code_change(_OldVsn, State, _Extra) ->
-  {ok, State}.
+add_tel_uri(ServiceUserId, PhoneNumber) -> 
+    {ok,SessionId} = login(sogadm,sogadm),
+    _Response = send(em_interface_cai3g_envelopes:env_add_hss_tel_uri(SessionId, ServiceUserId, PhoneNumber)),
+    {ok,_} = logout(SessionId).
+    
+add_sip_uri(ServiceUserId, PublicUserIdentity) -> 
+    {ok,SessionId} = login(sogadm,sogadm),
+    _Response = send(em_interface_cai3g_envelopes:env_add_hss_sip_uri(SessionId, ServiceUserId, PublicUserIdentity)),
+    {ok,_} = logout(SessionId).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-login(#state{ema_user = UserId, ema_pass = Pass}=State)->
-  login_response(send(env_login(UserId,Pass),State)).
+login(UserId, Pass)->
+  em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:env_login(UserId,Pass))).
 
-logout(SessionID,State)->
-  logout_response(send(env_logout(SessionID),State)).
-
-send(Request,#state{ema_url = URL,reconnect_delay = Delay, timeout = Timeout})->
+logout(SessionID)->
+  em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:env_logout(SessionID))).
+  
+  
+  
+send(Request)->
+    URL = "http://10.8.10.132:8998",
+    Timeout = 1000,
+    Delay = 5000,
+    
   case httpc:request(post,{URL,[],"text/xml",list_to_binary(Request)},[{timeout,Timeout}],[]) of
     {ok,{{_,200,_},_Headers,Body}}-> {ok,Body};
     {ok,{{_,500,_},_Headers,Body}}-> {error,Body};
@@ -116,4 +76,3 @@ send(Request,#state{ema_url = URL,reconnect_delay = Delay, timeout = Timeout})->
       timer:sleep(Delay),
       exit(Reason)
   end.
-

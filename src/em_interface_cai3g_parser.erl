@@ -53,7 +53,7 @@ logout_response({ok,Response})->
 is_successful(Response_parsed)->
   [Body]=get_elements('S:Body',get_element_childs(Response_parsed)),
   case get_elements('S:Fault',get_element_childs(Body)) of
-    [] -> true;
+    [undefined] -> true;
     [Fault]  ->
       [FaultCode] = get_elements('faultcode',get_element_childs(Fault)),
       Resp_FaultCode = get_element_text(FaultCode),

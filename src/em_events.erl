@@ -175,13 +175,19 @@ process(_OtherThing, _RepData, _State) ->
 %add_sipURI(true,ServiceUserId,PublicUserIdentity,_State)->
 %em_utils:log(gen_server:call(em_interface_cai3g,{add_sipURI,ServiceUserId,PublicUserIdentity})).
 
-add_user(UserName, GrpId, Type, _State) ->
-    em_db:add_user(UserName, GrpId, Type),
+add_user(UserName, GrpId, 'end-user', _State) ->
+    em_db:add_user(UserName, GrpId, 'end-user'),
     em_utils:log("User added to SRD"),
-    em_utils:log("HSS Subscriber created").
+    em_utils:log("HSS Subscriber created");
+add_user(UserName, GrpId, 'virtual-user', _State) ->
+    em_db:add_user(UserName, GrpId, 'virtual-user'),
+    em_interface_cai3g:create_subscriber(UserName, 'IMT_VIRTUAL'),
+    em_utils:log("Virtual user added to SRD"),
+    em_utils:log("HSS Virtual subscriber created").
 
 delete_user(UserName, _State) ->
     em_db:delete_user(UserName),
+    em_interface_cai3g:delete_subscriber(UserName),
     em_utils:log("User deleted from SRD"),
     em_utils:log("HSS Subscriber deleted"),
     em_utils:log("ENUM record deleted").

@@ -15,7 +15,7 @@
 -module(em_interface_cai3g_envelopes).
 
 %% API
--export([env_login/2,env_logout/1,env_create_hss_subscriber/2,env_add_hss_tel_uri/3,env_add_hss_sip_uri/3,env_delete_hss_subscriber/2]).
+-export([env_login/2,env_logout/1,env_create_hss_subscriber/3,env_add_hss_tel_uri/3,env_add_hss_sip_uri/3,env_delete_hss_subscriber/2]).
 
 
 env_login(UserID,Password)->
@@ -41,40 +41,39 @@ env_logout(SessionID)->
   </soapenv:Body>
 </soapenv:Envelope>",[SessionID,SessionID]).
 
-env_create_hss_subscriber(SessionID,UserID)->
-  io_lib:format("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:ns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/5.0/\">
+env_create_hss_subscriber(SessionID, UserID, ConfServiceProfile)->
+  io_lib:format("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
    <soapenv:Header>
       <cai3:SessionId>~s</cai3:SessionId>
    </soapenv:Header>
    <soapenv:Body>
       <cai3:Create>
-         <cai3:MOType>HSSSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/5.0/</cai3:MOType>
+         <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
          <cai3:MOId>
-            <cai3:subscriberId>~s</cai3:subscriberId>
+            <subscriberId>~s</subscriberId>
          </cai3:MOId>
          <cai3:MOAttributes>
-            <ns:createHSSSubscription subscriberId=\"~s\">
-               <ns:subscriberId>~s</ns:subscriberId>
-               	<ns:pubData publicIdValue=\"sip:~s\">
-               	<ns:publicIdValue>sip:~s</ns:publicIdValue>
-                  	<ns:privateUserId>~s</ns:privateUserId>
-                  	<ns:implicitRegSet>0</ns:implicitRegSet>
-                  	<ns:isDefault>FALSE</ns:isDefault>
-                  	<ns:configuredServiceProfiles configuredServiceProfileId=\"IMS_CENTREX\">
-                    	<ns:configuredServiceProfileId>IMS_CENTREX</ns:configuredServiceProfileId>
-                  	</ns:configuredServiceProfiles>
-                  <ns:maxSessions>99</ns:maxSessions>
-               </ns:pubData>
-               <ns:privateUser privateUserId=\"~s\">
-                  <ns:privateUserId>~s</ns:privateUserId>
-                  <ns:userPassword>123456</ns:userPassword>
-                  <ns:allowedAuthMechanism>Digest</ns:allowedAuthMechanism>
-               </ns:privateUser>
-            </ns:createHSSSubscription>
+            <CreateISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+               <subscriberId>~s</subscriberId>
+               <chargingProfId>DefaultChargingProfile</chargingProfId>
+               <isPsi>TRUE</isPsi>
+               <privateUser privateUserId=\"~s\">
+                  <privateUserId>~s</privateUserId>
+                  <userPassword>123456</userPassword>
+                  <allowedAuthMechanism>Digest</allowedAuthMechanism>
+               </privateUser>               
+               <subscriberServiceProfile serviceProfileId=\"~s\">
+                  <serviceProfileId>~s</serviceProfileId>
+                  <configuredServiceProfile configuredServiceProfileId=\"~s\">
+                     <configuredServiceProfileId>~s</configuredServiceProfileId>
+                  </configuredServiceProfile>
+                  <maxNumberSessions>99</maxNumberSessions> 
+               </subscriberServiceProfile>
+            </CreateISMSubscription>
          </cai3:MOAttributes>
       </cai3:Create>
    </soapenv:Body>
-</soapenv:Envelope>",[SessionID,UserID,UserID,UserID,UserID,UserID,UserID,UserID,UserID]).
+</soapenv:Envelope>",[SessionID,UserID,UserID,UserID,UserID,UserID,UserID,UserID,ConfServiceProfile,ConfServiceProfile]).
 
 
 env_add_hss_tel_uri(SessionID,UserID,TelURI)->
@@ -132,16 +131,16 @@ env_add_hss_sip_uri(SessionID,UserID,SipURI)->
    </soapenv:Body>
 </soapenv:Envelope>",[SessionID,UserID,UserID,SipURI,SipURI,UserID]).
 
-env_delete_hss_subscriber(SessionID,UserID)->
+env_delete_hss_subscriber(SessionID, UserID)->
   io_lib:format("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\">
    <soapenv:Header>
       <cai3:SessionId>~s</cai3:SessionId>
    </soapenv:Header>
    <soapenv:Body>
       <cai3:Delete>
-         <cai3:MOType>HSSSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/5.0/</cai3:MOType>
+         <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
          <cai3:MOId>
-            <cai3:subscriberId>~s</cai3:subscriberId>
+            <subscriberId>~s</subscriberId>
          </cai3:MOId>
       </cai3:Delete>
    </soapenv:Body>
