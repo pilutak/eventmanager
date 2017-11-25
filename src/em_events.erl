@@ -22,9 +22,9 @@
 process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
-	[GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
-	GrpId = em_utils:get_element_text(GroupId),
+    GrpId = em_utils:get_element_text(GroupId),
 
     add_user(UserName, GrpId, 'virtual-user', _State);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
@@ -76,11 +76,11 @@ process("UserAddRequest17sp4", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     %[G] = em_utils:get_elements(groupId, Inside_command),
     [U] = em_utils:get_elements(userId, InsideCommand),
-	[G] = em_utils:get_elements(groupId, InsideCommand),
+    [G] = em_utils:get_elements(groupId, InsideCommand),
 
     %GroupId = em_utils:get_element_text(G),
     UserName = em_utils:get_element_text(U),
-	GrpId = em_utils:get_element_text(G),
+    GrpId = em_utils:get_element_text(G),
     add_user(UserName, GrpId, 'end-user', _State);
 
 
