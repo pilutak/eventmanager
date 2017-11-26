@@ -17,73 +17,84 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 %% API
--export([scan/3,get_type_message/1,get_cdata/1,get_command_type/1,get_elements/2,get_element_attributes/2]).
--export([get_element_childs/1,get_element_name/1,get_element_text/1]).
--export([log/1,log/2]).
+-export([
+    scan/3,
+    get_type_message/1,
+    get_cdata/1,
+    get_command_type/1,
+    get_elements/2,
+    get_element_attributes/2,
+    get_element_childs/1,
+    get_element_name/1,
+    get_element_text/1,
+    log/1,
+    log/2
+    ]).
+    
+%%%===================================================================
+%%% API
+%%%===================================================================
 
-scan({xmlDocument,Content}=Data,Function,Record)->
-  lists:foldl(fun(X,Acc)->Function(X,Acc)end,Function(Data,Record),Content);
+scan({xmlDocument,Content} = Data, Function, Record) ->
+    lists:foldl(fun(X,Acc) -> Function(X, Acc) end, Function(Data, Record), Content);
 
-scan({xmlElement,_Name,_,_,_,_,_,Attributes,Content,_,_,_}=Data,Function,Record)->
-    R=lists:foldl(fun(X,Acc)->scan(X,Function,Acc) end,Function(Data,Record),Attributes), %% Scanning on Attributes
-    lists:foldl(fun(X,Acc)->scan(X,Function,Acc) end,R,Content); %% Scanning on Content
+scan({xmlElement,_Name,_,_,_,_,_,Attributes,Content,_,_,_} = Data, Function, Record) ->
+    R = lists:foldl(fun(X, Acc) -> scan(X, Function, Acc) end, Function(Data, Record), Attributes), %% Scanning on Attributes
+    lists:foldl(fun(X,Acc) -> scan(X, Function, Acc) end, R , Content); %% Scanning on Content
 
-scan(Data,Function,Record)->
-  Function(Data,Record).
+scan(Data, Function, Record) ->
+    Function(Data, Record).
 
+get_cdata(ParsedData) ->
+    scan(ParsedData, fun({xmlText,_,_,_,Value,cdata},_) -> Value; (_,Acc) -> Acc end,[]).
 
-get_cdata(Parsed_Data)->
-  scan(Parsed_Data,fun({xmlText,_,_,_,Value,cdata},_)->Value; (_,Acc)->Acc end,[]).
+get_type_message(ParsedData) ->
+    case ParsedData of
+        {xmlElement,'BroadsoftOCIReportingDocument',_,_,_,_,_,_,_,_,_,_} -> 'BroadsoftOCIReportingDocument';
+        {xmlElement,'BroadsoftDocument',_,_,_,_,_,_,_,_,_,_} -> 'BroadsoftDocument';
+        {xmlElement,_,_,_,_,_,_,_,_,_,_,_} -> not_implemented;
+        _Other -> undefined
+    end.
 
-get_type_message(Parsed_Data)->
-  case Parsed_Data of
-    {xmlElement,'BroadsoftOCIReportingDocument',_,_,_,_,_,_,_,_,_,_} -> 'BroadsoftOCIReportingDocument';
-    {xmlElement,'BroadsoftDocument',_,_,_,_,_,_,_,_,_,_} -> 'BroadsoftDocument';
-    {xmlElement,_,_,_,_,_,_,_,_,_,_,_} -> not_implemented;
-    _Other -> undefined
-  end.
+get_command_type(ParsedData) ->
+    scan(ParsedData,fun({xmlAttribute,'xsi:type',_,_,_,_,_,_,Value,_},_) -> Value; (_, Acc) -> Acc end,[]).
 
-get_command_type(Parsed_Data)->
-  scan(Parsed_Data,fun({xmlAttribute,'xsi:type',_,_,_,_,_,_,Value,_},_)->Value; (_,Acc)->Acc end,[]).
+get_element_name({xmlElement,Name,_,_,_,_,_,_,_,_,_,_}) -> Name;
+get_element_name(_) -> undefined.
 
-
-get_element_name({xmlElement,Name,_,_,_,_,_,_,_,_,_,_})->Name;
-get_element_name(_)->undefined.
-
-get_element_text({xmlElement,_,_,_,_,_,_,_,[{xmlText,_,_,_,Value,text}],_,_,_})->Value;
-get_element_text(_)->undefined.
+get_element_text({xmlElement,_,_,_,_,_,_,_,[{xmlText,_,_,_,Value,text}],_,_,_}) -> Value;
+get_element_text(_) -> undefined.
 
 
-get_elements(_,undefined)->[undefined];
-get_elements(Name,List)->
-  F= fun
+get_elements(_,undefined) -> [undefined];
+get_elements(Name, List) ->
+    F = fun
         (#xmlElement{name = ItemName}=E,[undefined]) when ItemName == Name -> [E];
         (#xmlElement{name = ItemName}=E,Acc) when ItemName == Name -> [E|Acc];
         (_,Acc) -> Acc
-      end,
-  lists:foldl(F,[undefined],List).
+    end,
+    lists:foldl(F, [undefined], List).
 
+get_element_attributes(Name,{xmlElement,_,_,_,_,_,_,AttributeList,_,_,_,_}) -> get_element_attributes(Name, AttributeList);
+get_element_attributes(Name,[{xmlAttribute,Name,_,_,_,_,_,_,Value,_}|_Rest]) -> Value;
+get_element_attributes(Name,[_|Rest]) -> get_element_attributes(Name, Rest);
+get_element_attributes(_,_) -> undefined.
 
-get_element_attributes(Name,{xmlElement,_,_,_,_,_,_,Attribute_list,_,_,_,_})->get_element_attributes(Name,Attribute_list);
-get_element_attributes(Name,[{xmlAttribute,Name,_,_,_,_,_,_,Value,_}|_Rest])->Value;
-get_element_attributes(Name,[_|Rest])->get_element_attributes(Name,Rest);
-get_element_attributes(_,_)->undefined.
+get_element_childs(undefined) -> undefined; 
+get_element_childs([]) -> undefined; 
+get_element_childs(#xmlElement{content = []}) -> undefined;
+get_element_childs(#xmlElement{content = Childs}) -> Childs.
 
-
-get_element_childs(undefined)->undefined; 
-get_element_childs([])->undefined; 
-get_element_childs(#xmlElement{content = []})->undefined;
-get_element_childs(#xmlElement{content = Childs})->Childs.
-
-
-log(Term)->
+log(Term) ->
     {ok,S} = file:open("em2.log",[append]),
     io:format(S,"~p ~n",[Term]),
     file:close(S).
 
-log(Message,List)->
+log(Message,List) ->
     {ok,S} = file:open("em2.log",[append]),
     io:format(S,Message,List),
     file:close(S).
 
-
+%%%===================================================================
+%%% Internal Functions
+%%%===================================================================

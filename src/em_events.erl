@@ -14,10 +14,12 @@
 
 -module(em_events).
 
-%% API
 -export([process/3]).
 -include("../include/em.hrl").
 
+%%%===================================================================
+%%% API
+%%%===================================================================
 
 process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
@@ -30,8 +32,6 @@ process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
     %% make sure to update DB and send request to HSS / ENUM
-
-    %em_utils:log(gen_server:call(em_interface_cai3g,{create_subscriber,em_utils:get_element_text(ServiceUserId)}));
 
 process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
@@ -50,15 +50,6 @@ process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     modify_e164(E164, NewE164, UserName, _State),
     modify_sipuri(SipUri, NewSipUri, UserName, _State);
 
-    
-    %[ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile,Inside_command),
-    %[PhoneNumber] = em_utils:get_elements(phoneNumber,em_utils:get_element_childs(ServiceInstanceProfile)),
-    %[PublicUserIdentity] = em_utils:get_elements(publicUserIdentity,em_utils:get_element_childs(ServiceInstanceProfile)),
-    %Have_PhoneNumber = em_utils:get_element_attributes('xsi:nil',PhoneNumber) =/= "true",
-    %Have_PublicUserIdentity = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =/= "true",
-    %add_telURI(Have_PhoneNumber,em_utils:get_element_text(ServiceUserId),em_utils:get_element_text(PhoneNumber),State),
-    %add_sipURI(Have_PublicUserIdentity,em_utils:get_element_text(ServiceUserId),em_utils:get_element_text(PublicUserIdentity),State);
-
 process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
@@ -67,18 +58,11 @@ process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
     %% TO DO: Query userId in DB, if the user has e164, 
     %% ENUM record must be deleted via EMA together with the HSS entry
 
-    %[ServiceUserId]=em_utils:get_elements(serviceUserId,em_utils:get_element_childs(RepData)),
-    %io:format(ServiceUserId);
-    %em_utils:log(gen_server:call(em_interface_cai3g,{del_user,em_utils:get_element_text(ServiceUserId)}));
-
-
 process("UserAddRequest17sp4", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
-    %[G] = em_utils:get_elements(groupId, Inside_command),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [G] = em_utils:get_elements(groupId, InsideCommand),
 
-    %GroupId = em_utils:get_element_text(G),
     UserName = em_utils:get_element_text(U),
     GrpId = em_utils:get_element_text(G),
     add_user(UserName, GrpId, 'end-user', _State);
@@ -116,10 +100,8 @@ process("UserModifyRequest17sp4", RepData, _State) ->
 
 process("UserDeleteRequest", RepData, _State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
-    %[G] = em_utils:get_elements(groupId, Inside_command),
     [U] = em_utils:get_elements(userId, InsideCommand),
 
-    %GroupId = em_utils:get_element_text(G),
     UserName = em_utils:get_element_text(U),
     delete_user(UserName, _State);
 
@@ -165,15 +147,9 @@ process("GroupDeleteRequest", RepData, _State) ->
 process(_OtherThing, _RepData, _State) -> 
     ignored.
 
-
-%add_telURI(false,_,_,_)->ignored;
-    %add_telURI(true,ServiceUserId,PhoneNumber,_State)->
-    %em_utils:log(gen_server:call(em_interface_cai3g,{add_telURI,ServiceUserId,PhoneNumber})).
-
-
-%add_sipURI(false,_,_,_)->ignored;
-%add_sipURI(true,ServiceUserId,PublicUserIdentity,_State)->
-%em_utils:log(gen_server:call(em_interface_cai3g,{add_sipURI,ServiceUserId,PublicUserIdentity})).
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 add_user(UserName, GrpId, 'end-user', _State) ->
     em_db:add_user(UserName, GrpId, 'end-user'),
@@ -197,9 +173,11 @@ modify_e164(undefined, undefined, _, _) ->
 modify_e164(E164, E164, _, _State) ->
     ignored;
 modify_e164(undefined, NewE164, UserName, _) -> 
-    em_db:set_e164(UserName, NewE164);
-modify_e164(_E164, undefined, UserName, _State) ->
-    em_db:set_e164(UserName, undefined).
+    em_db:set_e164(UserName, NewE164),
+    em_interface_cai3g:add_tel_uri(UserName, NewE164);
+modify_e164(E164, undefined, UserName, _State) ->
+    em_db:set_e164(UserName, undefined),
+    em_interface_cai3g:delete_tel_uri(UserName, E164).
 
 modify_sipuri(undefined, undefined, _, _) -> 
     ignored;

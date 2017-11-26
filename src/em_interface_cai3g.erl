@@ -15,50 +15,47 @@
 -module(em_interface_cai3g).
 -include("../include/em.hrl").
 
- 
-%% API
--export([create_subscriber/2]).
--export([delete_subscriber/1]).
--export([login/2]).
--export([send/1]).
-
+-export([
+    create_subscriber/2,
+    delete_subscriber/1,
+    add_tel_uri/2,
+    delete_tel_uri/2
+    ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-create_subscriber(UserId, ConfServiceProfile) -> 
-    {ok,SessionId} = login(sogadm,sogadm),
-    _Response = send(em_interface_cai3g_envelopes:env_create_hss_subscriber(SessionId, UserId, ConfServiceProfile)),
-    {ok,_} = logout(SessionId).
+create_subscriber(User, Profile) -> 
+    {ok, Session} = login(sogadm, sogadm),
+    send(em_interface_cai3g_envelopes:add_subscriber(Session, User, Profile)),
+    {ok, _} = logout(Session).
 
-delete_subscriber(UserId) -> 
-    {ok,SessionId} = login(sogadm,sogadm),
-    _Response = send(em_interface_cai3g_envelopes:env_delete_hss_subscriber(SessionId, UserId)),
-    {ok,_} = logout(SessionId).
+delete_subscriber(User) -> 
+    {ok, Session} = login(sogadm, sogadm),
+    send(em_interface_cai3g_envelopes:delete_subscriber(Session, User)),
+    {ok, _} = logout(Session).
 
-add_tel_uri(ServiceUserId, PhoneNumber) -> 
-    {ok,SessionId} = login(sogadm,sogadm),
-    _Response = send(em_interface_cai3g_envelopes:env_add_hss_tel_uri(SessionId, ServiceUserId, PhoneNumber)),
-    {ok,_} = logout(SessionId).
+add_tel_uri(User, E164) -> 
+    {ok, Session} = login(sogadm, sogadm),
+    send(em_interface_cai3g_envelopes:add_tel_uri(Session, User, E164)),
+    {ok, _} = logout(Session).
     
-add_sip_uri(ServiceUserId, PublicUserIdentity) -> 
-    {ok,SessionId} = login(sogadm,sogadm),
-    _Response = send(em_interface_cai3g_envelopes:env_add_hss_sip_uri(SessionId, ServiceUserId, PublicUserIdentity)),
-    {ok,_} = logout(SessionId).
+delete_tel_uri(User, E164) -> 
+    {ok, Session} = login(sogadm, sogadm),
+    send(em_interface_cai3g_envelopes:delete_tel_uri(Session, User, E164)),
+    {ok, _} = logout(Session).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-login(UserId, Pass)->
-  em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:env_login(UserId,Pass))).
+login(User, Pass)->
+  em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:login(User, Pass))).
 
-logout(SessionID)->
-  em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:env_logout(SessionID))).
-  
-  
-  
+logout(Session)->
+  em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:logout(Session))).
+    
 send(Request)->
     URL = "http://10.8.10.132:8998",
     Timeout = 1000,

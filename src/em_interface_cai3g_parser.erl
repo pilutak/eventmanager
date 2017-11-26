@@ -14,53 +14,55 @@
 
 -module(em_interface_cai3g_parser).
 
+-export([
+    login_response/1,
+    logout_response/1]).
 
-%% API
--export([login_response/1,logout_response/1]).
--import(em_utils,[get_elements/2,get_element_name/1,get_element_childs/1,get_element_text/1]).
+%%%===================================================================
+%%% API
+%%%===================================================================
+    
+login_response({error,Reason}) -> {error,Reason};
+login_response({ok, Resp}) ->
+    {RespParsed, _} = xmerl_scan:string(Resp),
+    case is_successful(RespParsed) of
+        true  ->
+            [Body] = em_utils:get_elements('S:Body', em_utils:get_element_childs(RespParsed)),
+            [LoginResp] = em_utils:get_elements('LoginResponse', em_utils:get_element_childs(Body)),
+            [Session] = em_utils:get_elements('sessionId', em_utils:get_element_childs(LoginResp)),
+            RespSession = em_utils:get_element_text(Session),
+            {ok,RespSession};
+        Fail -> Fail
+    end.
 
-login_response({error,Reason})->{error,Reason};
-login_response({ok,Response})->
-  {Response_parsed,_} = xmerl_scan:string(Response),
-  case is_successful(Response_parsed) of
-    true  ->
-      [Body]=get_elements('S:Body',get_element_childs(Response_parsed)),
-      [LoginResponse]=get_elements('LoginResponse',get_element_childs(Body)),
-      [SessionID]=get_elements('sessionId',get_element_childs(LoginResponse)),
-      Resp_SessionID=get_element_text(SessionID),
-      {ok,Resp_SessionID};
-    Fail -> Fail
-  end.
 
-
-logout_response({error,Reason})->{error,Reason};
-logout_response({ok,Response})->
-  {Response_parsed,_} = xmerl_scan:string(Response),
-  case is_successful(Response_parsed) of
-    true  ->
-      [Header]=get_elements('S:Header',get_element_childs(Response_parsed)),
-      [SessionID]=get_elements('SessionId',get_element_childs(Header)),
-      Resp_SessionID=get_element_text(SessionID),
-      {ok,Resp_SessionID};
-    Fail -> Fail
-  end.
-
+logout_response({error,Reason}) -> {error,Reason};
+logout_response({ok,Resp}) ->
+    {RespParsed,_} = xmerl_scan:string(Resp),
+    case is_successful(RespParsed) of
+        true  ->
+            [Header] = em_utils:get_elements('S:Header', em_utils:get_element_childs(RespParsed)),
+            [Session]= em_utils:get_elements('SessionId', em_utils:get_element_childs(Header)),
+            RespSession = em_utils:get_element_text(Session),
+            {ok,RespSession};
+        Fail -> Fail
+    end.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-is_successful(Response_parsed)->
-  [Body]=get_elements('S:Body',get_element_childs(Response_parsed)),
-  case get_elements('S:Fault',get_element_childs(Body)) of
-    [undefined] -> true;
-    [Fault]  ->
-      [FaultCode] = get_elements('faultcode',get_element_childs(Fault)),
-      Resp_FaultCode = get_element_text(FaultCode),
-      [FaultString] = get_elements('faultstring',get_element_childs(Fault)),
-      Resp_FaultString = get_element_text(FaultString),
-      {error,{faultcode,Resp_FaultCode},{faultstring,Resp_FaultString}}
-  end.
+is_successful(RespParsed) ->
+    [Body] = em_utils:get_elements('S:Body', em_utils:get_element_childs(RespParsed)),
+    case em_utils:get_elements('S:Fault', em_utils:get_element_childs(Body)) of
+        [undefined] -> true;
+        [Fault] -> 
+            [FaultCode] = em_utils:get_elements('faultcode', em_utils:get_element_childs(Fault)),
+            RespFaultCode = em_utils:get_element_text(FaultCode),
+            [FaultString] = em_utils:get_elements('faultstring', em_utils:get_element_childs(Fault)),
+            RespFaultString = em_utils:get_element_text(FaultString),
+            {error,{faultcode,RespFaultCode},{faultstring,RespFaultString}}
+    end.
 
 
 

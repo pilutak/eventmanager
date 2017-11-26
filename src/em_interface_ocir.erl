@@ -14,18 +14,18 @@
 
 -module(em_interface_ocir).
 
-%% API.
--export([start_connection/0]).
-%-export([close/1]).
-
-%% Internals.
--export([start_link/1]).
--export([init/2]).
+-export([
+    start_connection/0,
+    start_link/1,
+    init/2]).
 
 -include("../include/em.hrl").
 
 -record(state, { socket, host }).
   
+%%%===================================================================
+%%% API
+%%%===================================================================
 
 start_connection() ->
 {ok, Hosts} = application:get_env(em, bw_hosts),

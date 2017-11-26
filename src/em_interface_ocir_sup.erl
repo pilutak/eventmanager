@@ -15,7 +15,6 @@
 -module(em_interface_ocir_sup).
 -behaviour(supervisor).
 
-%% API.
 -export([start_link/0, open/1]).
 
 %% supervisor.
@@ -23,12 +22,13 @@
 
 -define(SUPERVISOR, ?MODULE).
 
-%% API.
+%%%===================================================================
+%%% API
+%%%===================================================================
 
 -spec start_link() -> {ok, pid()}.
 start_link() ->
     supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
-
 
 open(Host) ->
     {ok, Pid} = supervisor:start_child(?MODULE, [Host]),
