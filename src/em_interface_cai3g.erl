@@ -16,60 +16,59 @@
 -include("../include/em.hrl").
 
 -export([
-    create_subscriber/2,
-    delete_subscriber/1,
-    add_tel_uri/2,
-    delete_tel_uri/2
+    create_subscriber/3,
+    delete_subscriber/2,
+    add_tel_uri/3,
+    delete_tel_uri/3
     ]).
+    
+-record(state, { socket, host, ema_url, ema_user, ema_pass }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-create_subscriber(User, Profile) -> 
-    {ok, Session} = login(sogadm, sogadm),
-    send(em_interface_cai3g_envelopes:add_subscriber(Session, User, Profile)),
-    {ok, _} = logout(Session).
+create_subscriber(User, Profile, State) -> 
+    {ok, Session} = login(State),
+    send(em_interface_cai3g_envelopes:add_subscriber(Session, User, Profile), State),
+    {ok, _} = logout(Session, State).
 
-delete_subscriber(User) -> 
-    {ok, Session} = login(sogadm, sogadm),
-    send(em_interface_cai3g_envelopes:delete_subscriber(Session, User)),
-    {ok, _} = logout(Session).
+delete_subscriber(User, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:delete_subscriber(Session, User), State),
+    {ok, _} = logout(Session, State).
 
-add_tel_uri(User, E164) -> 
-    {ok, Session} = login(sogadm, sogadm),
-    send(em_interface_cai3g_envelopes:add_tel_uri(Session, User, E164)),
-    {ok, _} = logout(Session).
+add_tel_uri(User, E164, State) -> 
+    {ok, Session} = login(State),
+    send(em_interface_cai3g_envelopes:add_tel_uri(Session, User, E164), State),
+    {ok, _} = logout(Session, State).
     
-delete_tel_uri(User, E164) -> 
-    {ok, Session} = login(sogadm, sogadm),
-    send(em_interface_cai3g_envelopes:delete_tel_uri(Session, User, E164)),
-    {ok, _} = logout(Session).
+delete_tel_uri(User, E164, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:delete_tel_uri(Session, User, E164), State),
+    {ok, _} = logout(Session, State).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-login(User, Pass)->
-  em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:login(User, Pass))).
+login(#state{ema_user = User, ema_pass = Pass} = State) ->
+    em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:login(User, Pass), State)).
 
-logout(Session)->
-  em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:logout(Session))).
+logout(Session, State) ->
+      em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:logout(Session), State)).
     
-send(Request)->
-    URL = "http://10.8.10.132:8998",
-    Timeout = 1000,
-    Delay = 5000,
-    
-  case httpc:request(post,{URL,[],"text/xml",list_to_binary(Request)},[{timeout,Timeout}],[]) of
+send(Request, #state{ema_url= EMAUrl}) ->
+    %{ok, {Url, _, _}} = application:get_env(em, ema),
+  case httpc:request(post,{EMAUrl,[],"text/xml",list_to_binary(Request)},[{timeout,1000}],[]) of
     {ok,{{_,200,_},_Headers,Body}}-> {ok,Body};
     {ok,{{_,500,_},_Headers,Body}}-> {error,Body};
-    {ok,{{_,OtherStatus,_},_Headers,_Body}}->
-      ?LOG("HTTP Status Code unexpected ~p ~n waiting ~p miliseconds ~n",OtherStatus,Delay),
-      timer:sleep(Delay),
+    {ok,{{_,_OtherStatus,_},_Headers,_Body}}->
+      %?LOG("HTTP Status Code unexpected ~p ~n waiting ~p miliseconds ~n",OtherStatus, 5000),
+      timer:sleep(5000),
       exit(http_code_unexpected);
     {error,Reason} ->
-      ?LOG("Error on sending to EMA ~p ~n waiting ~p miliseconds ~n",Reason,Delay),
-      timer:sleep(Delay),
+      %?LOG("Error on sending to EMA ~p ~n waiting ~p miliseconds ~n",Reason, 5000),
+      timer:sleep(5000),
       exit(Reason)
   end.

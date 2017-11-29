@@ -21,19 +21,19 @@
 %%% API
 %%%===================================================================
 
-process("GroupAutoAttendantAddInstanceRequest20", RepData, _State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+process("GroupAutoAttendantAddInstanceRequest20", Message, State) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
     GrpId = em_utils:get_element_text(GroupId),
 
-    add_user(UserName, GrpId, 'virtual-user', _State);
+    add_user(UserName, GrpId, 'virtual-user', State);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
     %% make sure to update DB and send request to HSS / ENUM
 
-process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
+process("GroupAutoAttendantModifyInstanceRequest20", RepData, State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
@@ -47,14 +47,17 @@ process("GroupAutoAttendantModifyInstanceRequest20", RepData, _State) ->
     SipUri = em_db:get_sipuri(UserName),
     E164 = em_db:get_e164(UserName),
 
-    modify_e164(E164, NewE164, UserName, _State),
-    modify_sipuri(SipUri, NewSipUri, UserName, _State);
+    modify_e164(E164, NewE164, UserName, State),
+    modify_sipuri(SipUri, NewSipUri, UserName, State);
 
-process("GroupAutoAttendantDeleteInstanceRequest", RepData, _State) ->
+process("GroupAutoAttendantDeleteInstanceRequest", RepData, State) ->
     InsideCommand = em_utils:get_element_childs(RepData),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
-    delete_user(UserName, _State);
+    
+    ?INFO_MSG("Event: GroupAutoAttendantDeleteInstanceRequest ~p", [UserName]),
+    
+    delete_user(UserName, State);
     %% TO DO: Query userId in DB, if the user has e164, 
     %% ENUM record must be deleted via EMA together with the HSS entry
 
@@ -144,8 +147,8 @@ process("GroupDeleteRequest", RepData, _State) ->
         end, Users);
  
 
-process(_OtherThing, _RepData, _State) -> 
-    ignored.
+process(CommandType, _RepData, _State) -> 
+    CommandType.
 
 %%%===================================================================
 %%% Internal functions
@@ -155,35 +158,35 @@ add_user(UserName, GrpId, 'end-user', _State) ->
     em_db:add_user(UserName, GrpId, 'end-user'),
     em_utils:log("User added to SRD"),
     em_utils:log("HSS Subscriber created");
-add_user(UserName, GrpId, 'virtual-user', _State) ->
+add_user(UserName, GrpId, 'virtual-user', State) ->
     em_db:add_user(UserName, GrpId, 'virtual-user'),
-    em_interface_cai3g:create_subscriber(UserName, 'IMT_VIRTUAL'),
+    em_interface_cai3g:create_subscriber(UserName, 'IMT_VIRTUAL', State),
     em_utils:log("Virtual user added to SRD"),
     em_utils:log("HSS Virtual subscriber created").
 
-delete_user(UserName, _State) ->
+delete_user(UserName, State) ->
     em_db:delete_user(UserName),
-    em_interface_cai3g:delete_subscriber(UserName),
+    em_interface_cai3g:delete_subscriber(UserName, State),
     em_utils:log("User deleted from SRD"),
     em_utils:log("HSS Subscriber deleted"),
     em_utils:log("ENUM record deleted").
 
-modify_e164(undefined, undefined, _, _) -> 
+modify_e164(undefined, undefined, _UserName, _State) -> 
     ignored;
-modify_e164(E164, E164, _, _State) ->
+modify_e164(E164, E164, _UserName, _State) ->
     ignored;
-modify_e164(undefined, NewE164, UserName, _) -> 
+modify_e164(undefined, NewE164, UserName, State) -> 
     em_db:set_e164(UserName, NewE164),
-    em_interface_cai3g:add_tel_uri(UserName, NewE164);
-modify_e164(E164, undefined, UserName, _State) ->
+    em_interface_cai3g:add_tel_uri(UserName, NewE164, State);
+modify_e164(E164, undefined, UserName, State) ->
     em_db:set_e164(UserName, undefined),
-    em_interface_cai3g:delete_tel_uri(UserName, E164).
+    em_interface_cai3g:delete_tel_uri(UserName, E164, State).
 
-modify_sipuri(undefined, undefined, _, _) -> 
+modify_sipuri(undefined, undefined, _UserName, _State) -> 
     ignored;
-modify_sipuri(SipUri, SipUri, _, _State) ->
+modify_sipuri(SipUri, SipUri, _UserName, _State) ->
     ignored;
-modify_sipuri(undefined, NewSipUri, UserName, _) -> 
+modify_sipuri(undefined, NewSipUri, UserName, _State) -> 
     em_db:set_sipuri(UserName, NewSipUri);
 modify_sipuri(_SipUri, undefined, UserName, _State) ->
     em_db:set_sipuri(UserName, undefined).

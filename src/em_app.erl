@@ -20,6 +20,7 @@
 
 start(_Type, _Args) ->
 	application:ensure_all_started(mnesia),
+    application:ensure_all_started(inets),
 	
     case em_sup:start_link() of
 	{ok, Pid} ->

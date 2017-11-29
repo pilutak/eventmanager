@@ -12,42 +12,29 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--define(LOG(X),error_logger:info_msg(X,[])).
--define(LOG(X,Y),error_logger:info_msg(X,[Y])).
--define(LOG(X,Y,Z),error_logger:info_msg(X,[Y,Z])).
 
--define(RECONNECT_DELAY,
-  case application:get_env(reconnect_delay) of
-    undefined -> 5000; %% By default 5 sec
-    {ok,Val} -> Val
-  end).
+-define(ERROR_MSG(Format, Args),
+	error_logger:error_msg("(~p:~p:~p) " ++ Format,
+			       [self(), ?MODULE, ?LINE | Args])).
 
--define(BW_CONNECTION_TIMEOUT,
-  case application:get_env(bw_connection_timeout) of
-    undefined -> 35000;
-    {ok,Val} -> Val
-  end).
-
--define(EMA_CONNECTION_TIMEOUT,
-  case application:get_env(ema_connection_timeout) of
-    undefined -> 5000;
-    {ok,Val} -> Val
-  end).
-
+-define(INFO_MSG(Format, Args),
+	error_logger:info_msg("(~p:~p:~p) " ++ Format,
+			       [self(), ?MODULE, ?LINE | Args])).
+                   
 -define(EMA_URL,
-  case application:get_env(ema) of
-    undefined -> "http://localhost";
-    {ok,[{URL,_UserId,_Pass}]} -> URL
+  case application:get_env(em, ema) of
+    undefined -> "http://localhost:8998";
+    {ok,{URL, _User, _Pass}} -> URL
   end).
 
--define(EMA_UserID,
-  case application:get_env(ema) of
-    undefined -> "userId";
-    {ok,[{_URL,UserId,_Pass}]} -> UserId
+-define(EMA_USER,
+  case application:get_env(em, ema) of
+    undefined -> "sogadm";
+    {ok,{_URL, User, _Pass}} -> User
   end).
 
--define(EMA_Pass,
-  case application:get_env(ema) of
-    undefined -> "password123456";
-    {ok,[{_URL,_UserId,Pass}]} -> Pass
+-define(EMA_PASS,
+  case application:get_env(em, ema) of
+    undefined -> "sogadm";
+    {ok,{_URL, _User, Pass}} -> Pass
   end).

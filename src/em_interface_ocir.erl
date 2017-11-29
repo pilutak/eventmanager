@@ -21,7 +21,7 @@
 
 -include("../include/em.hrl").
 
--record(state, { socket, host }).
+-record(state, { socket, host, ema_url, ema_user, ema_pass }).
   
 %%%===================================================================
 %%% API
@@ -46,22 +46,23 @@ start_link(Host) ->
 init(Parent, Host) ->
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     register(list_to_atom(Host),self()),
-    connect(#state{socket = undefined, host = Host}).
+    connect(#state{socket = undefined, host = Host, ema_url = ?EMA_URL, ema_user = ?EMA_USER, ema_pass = ?EMA_PASS}).
 
 
 connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 32768},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
-	    {ok,Dir}=file:get_cwd(),
-	    ?LOG("Connected (em2.log located at ~p ) ~n",Dir),
+	    %{ok,Dir}=file:get_cwd(),
+        ?INFO_MSG("Socket connected: ~p", [Host]),
+	    %?LOG("Connected (em2.log located at ~p ) ~n",Dir),
 	    loop(State#state{socket=Sock});
 
         {error,timeout} ->
-	    ?LOG("TIMEOUT: Reconnecting.... ~n"),
+        ?ERROR_MSG("Socket timeout, reconnecting: ~p", [Host]),
 	    connect(State);
 
         {error,Reason} ->
-	    ?LOG("Error ~p ~n Reconnecting... ~n",Reason),
+	    ?ERROR_MSG("Socket timeout, reconnecting: ~p", [Reason]),
 	    timer:sleep(10000),
 	    connect(State)
 
@@ -76,12 +77,12 @@ loop(State) ->
 	    process(Data,State);
 
 	{tcp_closed, _} ->
-	    io:format("TCP is closed"),
+	    ?ERROR_MSG("Socket closed, reconnecting: ~p", []),
 	    timer:sleep(10000),
 	    connect(State);
 
 	{tcp_error, _, Reason} ->
-	    io:format(Reason);
+	    ?ERROR_MSG("Socket error: ~p", [Reason]);
 
 
 	Any when is_tuple(Any), is_pid(element(2, Any)) ->
@@ -90,7 +91,8 @@ loop(State) ->
 	    loop(State);
     
 	Any ->
-	    error_logger:error_msg("Unexpected message: ~w~n", [Any]),
+	    %error_logger:error_msg("Unexpected message: ~w~n", [Any]),
+        ?ERROR_MSG("Unexpected message: ~w~n", [Any]),
 	    loop(State)
     end.
   
@@ -100,24 +102,24 @@ process("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n", State) ->
     loop(State);
 
 process(Data, State) ->
-    {Command_type, Message} = top_parser(Data),
-    em_events:process(Command_type,Message,Data),
+    {CommandType, Message} = top_parser(Data),
+    em_events:process(CommandType, Message, State),
     loop(State).
 
 top_parser(Data) -> 
-    {Parsed_Message,_} = xmerl_scan:string(Data),
-    parser_message(em_utils:get_type_message(Parsed_Message),Parsed_Message).
+    {ParsedMessage,_} = xmerl_scan:string(Data),
+    parser_message(em_utils:get_type_message(ParsedMessage), ParsedMessage).
 
-parser_message('BroadsoftOCIReportingDocument',Data)->
+parser_message('BroadsoftOCIReportingDocument', Data)->
     case em_utils:get_cdata(Data) of
 	[] ->
 	    {ignored,undefined};
 	CDATA ->
-	    {Parsed_CDATA,_} = xmerl_scan:string(CDATA),
-	    parser_message(em_utils:get_type_message(Parsed_CDATA),Parsed_CDATA)
+	    {ParsedCDATA,_} = xmerl_scan:string(CDATA),
+	    parser_message(em_utils:get_type_message(ParsedCDATA), ParsedCDATA)
     end;
 
-parser_message('BroadsoftDocument',Data)->
+parser_message('BroadsoftDocument', Data)->
     [Command|_Other_ignored]=em_utils:get_elements(command,em_utils:get_element_childs(Data)),
     {em_utils:get_element_attributes('xsi:type',Command),Command};
 
