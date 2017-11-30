@@ -180,8 +180,11 @@ modify_e164(undefined, NewE164, UserName, State) ->
     em_interface_cai3g:add_tel_uri(UserName, NewE164, State);
 modify_e164(E164, undefined, UserName, State) ->
     em_db:set_e164(UserName, undefined),
-    em_interface_cai3g:delete_tel_uri(UserName, E164, State).
-
+    em_interface_cai3g:delete_tel_uri(UserName, E164, State);
+modify_e164(_E164, NewE164, UserName, _State) ->
+    em_db:set_e164(UserName, NewE164),
+    ?INFO_MSG("Request to change TELURIO for~p", [UserName]).
+    
 modify_sipuri(undefined, undefined, _UserName, _State) -> 
     ignored;
 modify_sipuri(SipUri, SipUri, _UserName, _State) ->
@@ -189,4 +192,9 @@ modify_sipuri(SipUri, SipUri, _UserName, _State) ->
 modify_sipuri(undefined, NewSipUri, UserName, _State) -> 
     em_db:set_sipuri(UserName, NewSipUri);
 modify_sipuri(_SipUri, undefined, UserName, _State) ->
-    em_db:set_sipuri(UserName, undefined).
+    em_db:set_sipuri(UserName, undefined);
+modify_sipuri(_SipUri, NewSipUri, UserName, _State) ->
+    em_db:set_sipuri(UserName, NewSipUri),
+    ?INFO_MSG("Request to change SIPURI for~p", [UserName]).
+    
+    
