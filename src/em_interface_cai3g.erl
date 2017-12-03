@@ -18,8 +18,12 @@
 -export([
     create_subscriber/3,
     delete_subscriber/2,
-    add_tel_uri/3,
-    delete_tel_uri/3
+    add_tel_uri/4,
+    add_pubid/4,
+    delete_tel_uri/3,
+    delete_pubid/3,
+    add_serviceprofile/4,
+    delete_serviceprofile/3
     ]).
     
 -record(state, { socket, host, ema_url, ema_user, ema_pass }).
@@ -38,9 +42,14 @@ delete_subscriber(User, State) ->
     send(em_interface_cai3g_envelopes:delete_subscriber(Session, User), State),
     {ok, _} = logout(Session, State).
 
-add_tel_uri(User, E164, State) -> 
+add_tel_uri(User, E164, SipUri, State) -> 
     {ok, Session} = login(State),
-    send(em_interface_cai3g_envelopes:add_tel_uri(Session, User, E164), State),
+    send(em_interface_cai3g_envelopes:add_tel_uri(Session, User, E164, SipUri), State),
+    {ok, _} = logout(Session, State).
+    
+add_pubid(User, PubIdValue, ServiceProfile, State) -> 
+    {ok, Session} = login(State),
+    send(em_interface_cai3g_envelopes:add_pubid(Session, User, PubIdValue, ServiceProfile), State),
     {ok, _} = logout(Session, State).
     
 delete_tel_uri(User, E164, State) -> 
@@ -48,6 +57,21 @@ delete_tel_uri(User, E164, State) ->
     send(em_interface_cai3g_envelopes:delete_tel_uri(Session, User, E164), State),
     {ok, _} = logout(Session, State).
 
+delete_pubid(User, PubIdValue, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:delete_pubid(Session, User, PubIdValue), State),
+    {ok, _} = logout(Session, State).
+
+add_serviceprofile(User, ServiceProfile, ConfiguredServiceProfile, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:add_serviceprofile(Session, User, ServiceProfile, ConfiguredServiceProfile), State),
+    {ok, _} = logout(Session, State).
+        
+delete_serviceprofile(User, ServiceProfile, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:delete_serviceprofile(Session, User, ServiceProfile), State),
+    {ok, _} = logout(Session, State).
+    
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

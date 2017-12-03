@@ -18,9 +18,13 @@
     login/2,
     logout/1,
     add_subscriber/3,
-    add_tel_uri/3,
+    add_tel_uri/4,
+    add_pubid/4,
     delete_tel_uri/3,
-    delete_subscriber/2
+    delete_subscriber/2,
+    delete_pubid/3,
+    add_serviceprofile/4,
+    delete_serviceprofile/3
     ]).
     
 %%%===================================================================
@@ -93,7 +97,7 @@ add_subscriber(Session, User, Profile) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, User, User, User, User, User, User, User, User, User, User, User, Profile, Profile]).
 
-add_tel_uri(Session, User, E164) ->
+add_tel_uri(Session, User, E164, SipUri) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -119,7 +123,7 @@ add_tel_uri(Session, User, E164) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, E164, E164, User, User]).
+    </soapenv:Envelope>",[Session, User, User, E164, E164, User, SipUri]).
 
 delete_tel_uri(Session, User, E164) ->
     io_lib:format(
@@ -160,6 +164,110 @@ delete_subscriber(Session, User) ->
             </cai3:Delete>
         </soapenv:Body>
     </soapenv:Envelope>",[Session, User]).
+    
+add_pubid(Session, User, PubIdValue, ServiceProfile) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+        <soapenv:Header>
+            <cai3:SessionId>~s</cai3:SessionId>
+        </soapenv:Header>
+        <soapenv:Body>
+            <cai3:Set>
+                <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
+                <cai3:MOId>
+                    <subscriberId>~s</subscriberId>
+                </cai3:MOId>
+                <cai3:MOAttributes>
+                    <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+                        <publicData publicIdValue=\"~s\">
+                            <publicIdValue>~s</publicIdValue>
+                            <privateUserId>~s</privateUserId>
+                            <implicitRegSet>0</implicitRegSet>
+                            <isDefault>FALSE</isDefault>
+                            <serviceProfileId>~s</serviceProfileId>
+                            <sessionBarringInd>FALSE</sessionBarringInd>
+                        </publicData>
+                    </SetISMSubscription>
+                </cai3:MOAttributes>
+            </cai3:Set>
+        </soapenv:Body>
+    </soapenv:Envelope>",[Session, User, User, PubIdValue, PubIdValue, User, ServiceProfile]).
+    
+delete_pubid(Session, User, PubIdValue) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+        <soapenv:Header>
+            <cai3:SessionId>~s</cai3:SessionId>
+        </soapenv:Header>
+        <soapenv:Body>
+            <cai3:Set>
+                <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
+                <cai3:MOId>
+                    <subscriberId>~s</subscriberId>
+                </cai3:MOId>
+                <cai3:MOAttributes>
+                    <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+                        <publicData publicIdValue=\"~s\">
+                            <publicIdState>not_registered</publicIdState>
+                        </publicData>
+                        <publicData publicIdValue=\"~s\" xsi:nil=\"true\"/>
+                    </SetISMSubscription>
+                </cai3:MOAttributes>
+            </cai3:Set>
+        </soapenv:Body>
+    </soapenv:Envelope>",[Session, User, User, PubIdValue, PubIdValue]).
+    
+
+add_serviceprofile(Session, User, ServiceProfile, ConfiguredServiceProfile) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+        <soapenv:Header>
+            <cai3:SessionId>~s</cai3:SessionId>
+        </soapenv:Header>
+        <soapenv:Body>
+            <cai3:Set>
+                <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
+                <cai3:MOId>
+                    <subscriberId>~s</subscriberId>
+                </cai3:MOId>
+                <cai3:MOAttributes>
+                    <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+		                <subscriberServiceProfile serviceProfileId=\"~s\"> 
+                            <serviceProfileId>~s</serviceProfileId> 
+                            <configuredServiceProfile configuredServiceProfileId=\"~s\"> 
+                                <configuredServiceProfileId>~s\</configuredServiceProfileId> 
+                            </configuredServiceProfile>
+                            <subscribedMediaProfile>99</subscribedMediaProfile>
+                            <maxNumberSessions>99</maxNumberSessions>
+                            <phoneContext>tg.gl</phoneContext>
+                        </subscriberServiceProfile>
+                    </SetISMSubscription>
+                </cai3:MOAttributes>
+            </cai3:Set>
+        </soapenv:Body>
+    </soapenv:Envelope>",[Session, User, User, ServiceProfile, ServiceProfile, ConfiguredServiceProfile, ConfiguredServiceProfile]).
+        
+delete_serviceprofile(Session, User, ServiceProfile) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+        <soapenv:Header>
+            <cai3:SessionId>~s</cai3:SessionId>
+        </soapenv:Header>
+        <soapenv:Body>
+            <cai3:Set>
+                <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
+                <cai3:MOId>
+                    <subscriberId>~s</subscriberId>
+                </cai3:MOId>
+                <cai3:MOAttributes>
+                    <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+                        <subscriberServiceProfile serviceProfileId=\"~s\" xsi:nil=\"true\">
+                        </subscriberServiceProfile> 
+                    </SetISMSubscription>
+                </cai3:MOAttributes>
+            </cai3:Set>
+        </soapenv:Body>
+    </soapenv:Envelope>",[Session, User, User, ServiceProfile]).
     
 %%%===================================================================
 %%% Internal functions
