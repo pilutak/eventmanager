@@ -23,7 +23,9 @@
     delete_tel_uri/3,
     delete_pubid/3,
     add_serviceprofile/4,
-    delete_serviceprofile/3
+    delete_serviceprofile/3,
+    add_enum/3,
+    delete_enum/3
     ]).
     
 -record(state, { socket, host, ema_url, ema_user, ema_pass }).
@@ -71,6 +73,17 @@ delete_serviceprofile(User, ServiceProfile, State) ->
     {ok, Session}  = login(State),
     send(em_interface_cai3g_envelopes:delete_serviceprofile(Session, User, ServiceProfile), State),
     {ok, _} = logout(Session, State).
+    
+add_enum(Phone, PubIdValue, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:add_enum(Session, Phone, PubIdValue), State),
+    {ok, _} = logout(Session, State).
+        
+delete_enum(Phone, PubIdValue, State) -> 
+    {ok, Session}  = login(State),
+    send(em_interface_cai3g_envelopes:delete_enum(Session, Phone, PubIdValue), State),
+    {ok, _} = logout(Session, State).
+    
     
 %%%===================================================================
 %%% Internal functions

@@ -24,7 +24,9 @@
     delete_subscriber/2,
     delete_pubid/3,
     add_serviceprofile/4,
-    delete_serviceprofile/3
+    delete_serviceprofile/3,
+    add_enum/3,
+    delete_enum/3
     ]).
     
 %%%===================================================================
@@ -269,6 +271,57 @@ delete_serviceprofile(Session, User, ServiceProfile) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, User, User, ServiceProfile]).
     
+add_enum(Session, Phone, PubId) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:ns=\"http://schemas.ericsson.com/ema/UserProvisioning/IPWorks/5.0/\"> 
+   <soapenv:Header> 
+      <cai3:SessionId>~s</cai3:SessionId> 
+   </soapenv:Header> 
+   <soapenv:Body> 
+      <cai3:Create> 
+         <cai3:MOType>DNSSubscription@http://schemas.ericsson.com/ema/UserProvisioning/IPWorks/5.0/</cai3:MOType> 
+         <cai3:MOId> 
+            <cai3:msisdn>tel:299~s</cai3:msisdn> 
+         </cai3:MOId> 
+         <cai3:MOAttributes> 
+            <ns:createDNSSubscription msisdn=\"tel:299~s\">
+               <ns:msisdn>tel:299~s</ns:msisdn>
+               <ns:subscriberId>NONE</ns:subscriberId> 
+               <ns:records publicId=\"sip:~s\"> 
+                  <ns:publicId>sip:~s</ns:publicId> 
+                  <ns:flags>nu</ns:flags> 
+                  <ns:order>10</ns:order> 
+                  <ns:preference>10</ns:preference> 
+                  <ns:service>E2U+sip</ns:service>
+               </ns:records> 
+            </ns:createDNSSubscription> 
+         </cai3:MOAttributes> 
+      </cai3:Create> 
+   </soapenv:Body> 
+</soapenv:Envelope>",[Session, Phone, Phone, Phone, PubId, PubId]).
+
+delete_enum(Session, Phone, PubId) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:ns=\"http://schemas.ericsson.com/ema/UserProvisioning/IPWorks/5.0/\">    
+    <soapenv:Header> 
+      <cai3:SessionId>~s</cai3:SessionId> 
+   </soapenv:Header> 
+   <soapenv:Body> 
+      <cai3:Delete>
+         <cai3:MOType>DNSSubscription@http://schemas.ericsson.com/ema/UserProvisioning/IPWorks/5.0/</cai3:MOType>
+         <cai3:MOId>
+            <cai3:msisdn>tel:299~s</cai3:msisdn>
+         </cai3:MOId>
+         <cai3:MOAttributes> 
+            <ns:setDNSSubscription msisdn=\"tel:299~s\"> 
+               <ns:subscriberId>NONE</ns:subscriberId> 
+               <ns:records publicId=\"sip:~s\" xsi:nil=\"true\"/> 
+            </ns:setDNSSubscription> 
+         </cai3:MOAttributes> 
+      </cai3:Delete>
+   </soapenv:Body> 
+</soapenv:Envelope> ",[Session, Phone, Phone, PubId]).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

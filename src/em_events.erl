@@ -182,20 +182,25 @@ modify_e164(_UserName, Phone, Phone, _State) ->
 modify_e164(UserName, undefined, NewPhone, State) -> 
     PubId = em_db:get_sipuri(UserName),
     em_db:set_e164(UserName, NewPhone),
+    em_interface_cai3g:add_enum(NewPhone, PubId, State),
     em_interface_cai3g:add_tel_uri(UserName, NewPhone, PubId, State),
     ?INFO_MSG("Phone added for: ~p", [UserName]);
 modify_e164(UserName, Phone, undefined, State) ->
+    PubId = em_db:get_sipuri(UserName),
     em_db:set_e164(UserName, undefined),
     em_interface_cai3g:delete_tel_uri(UserName, Phone, State),
+    em_interface_cai3g:delete_enum(Phone, PubId, State),
     ?INFO_MSG("Phone deleted for: ~p", [UserName]);
 modify_e164(UserName, Phone, NewPhone, State) ->
     PubId = em_db:get_sipuri(UserName),
     em_db:set_e164(UserName, NewPhone),
+    em_interface_cai3g:delete_enum(UserName, Phone, PubId, State),
     em_interface_cai3g:delete_tel_uri(UserName, Phone, State),
+    em_interface_cai3g:add_enum(UserName, NewPhone, PubId, State),
     em_interface_cai3g:add_tel_uri(UserName, NewPhone, PubId, State),
     ?INFO_MSG("Phone modified for: ~p", [UserName]).
-
-
+    
+    
 modify_sipuri(_UserName, PubId, PubId, _Phone, _State) ->
     ignored;
 modify_sipuri(UserName, UserName, undefined, _Phone, _State) ->
@@ -208,10 +213,12 @@ modify_sipuri(UserName, PubId, undefined, undefined, State) ->
     em_interface_cai3g:add_pubid(UserName, "sip:" ++ UserName, UserName, State),   
     ?INFO_MSG("PubId modified to default for: ~p", [UserName]);
 modify_sipuri(UserName, PubId, undefined, Phone, State) ->
-    em_db:set_sipuri(UserName, UserName),   
+    em_db:set_sipuri(UserName, UserName),
+    em_interface_cai3g:delete_enum(Phone, PubId, State),  
     em_interface_cai3g:delete_tel_uri(UserName, Phone, State),  
     em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
     em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
+    em_interface_cai3g:add_enum(Phone, UserName, State),
     em_interface_cai3g:add_serviceprofile(UserName, UserName, "IMT_VIRTUAL", State),
     em_interface_cai3g:add_pubid(UserName, "sip:" ++ UserName, UserName, State),
     em_interface_cai3g:add_tel_uri(UserName, Phone, UserName, State),   
@@ -224,10 +231,12 @@ modify_sipuri(UserName, PubId, NewPubId, undefined, State) ->
     em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
     ?INFO_MSG("PubId modified for: ~p", [UserName]);
 modify_sipuri(UserName, PubId, NewPubId, Phone, State) ->
-    em_db:set_sipuri(UserName, NewPubId),    
+    em_db:set_sipuri(UserName, NewPubId),
+    em_interface_cai3g:delete_enum(Phone, PubId, State),        
     em_interface_cai3g:delete_tel_uri(UserName, Phone, State), 
     em_interface_cai3g:add_serviceprofile(UserName, NewPubId, "IMT_VIRTUAL", State),
     em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
+    em_interface_cai3g:add_enum(Phone, NewPubId, State),    
     em_interface_cai3g:add_pubid(UserName, "sip:" ++ NewPubId, NewPubId, State),
     em_interface_cai3g:add_tel_uri(UserName, Phone, NewPubId, State),  
     em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
