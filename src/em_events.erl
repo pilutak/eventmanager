@@ -197,7 +197,9 @@ modify_e164(UserName, Phone, NewPhone, State) ->
 
 
 modify_sipuri(_UserName, PubId, PubId, _Phone, _State) ->
-    ignored;    
+    ignored;
+modify_sipuri(UserName, UserName, undefined, _Phone, _State) ->
+    ignored;
 modify_sipuri(UserName, PubId, undefined, undefined, State) ->
     em_db:set_sipuri(UserName, UserName),
     em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
