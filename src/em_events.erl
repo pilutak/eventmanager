@@ -63,7 +63,9 @@ processor("GroupAutoAttendantModifyInstanceRequest20", Message, Ctx) ->
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
  
     UserName = em_utils:get_element_text(ServiceUserId),
-    PubId = em_utils:get_element_text(PublicUserIdentity),
+    PublicId = em_utils:get_element_text(PublicUserIdentity),
+    
+    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
     Phone = em_utils:get_element_text(PhoneNumber),
     
     User = #subscriber{ user = UserName,
@@ -83,41 +85,149 @@ processor("GroupAutoAttendantDeleteInstanceRequest", Message, Ctx) ->
     delete_user(UserName, Ctx);
 
 
-processor("GroupHuntGroupAddInstanceRequest20", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+processor("GroupHuntGroupAddInstanceRequest20", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    GrpId = em_utils:get_element_text(GroupId),
     
-processor("GroupHuntGroupModifyInstanceRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    User = #subscriber{ user=UserName,
+                        group_id=GrpId,
+                        type='HG',
+                        csprofile='IMT_VIRTUAL',
+                        pubid=UserName,
+                        sprofile=UserName },
     
-processor("GroupHuntGroupDeleteInstanceRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    add_user(User, Ctx);
+    %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
+    %% Send request to EMA to create user, if there is publicID or phone in the event, 
+    %% make sure to update DB and send request to HSS / ENUM
+    
+processor("GroupHuntGroupModifyInstanceRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
+    [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
+    [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
+ 
+    UserName = em_utils:get_element_text(ServiceUserId),
+    PublicId = em_utils:get_element_text(PublicUserIdentity),
+    
+    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+    Phone = em_utils:get_element_text(PhoneNumber),
+    
+    User = #subscriber{ user = UserName,
+                        pubid = PubId,
+                        phone = Phone,
+                        type = 'HG', 
+                        csprofile = 'IMT_VIRTUAL' 
+                         },
+    
+    modify_user(User, Ctx);
+    
+processor("GroupHuntGroupDeleteInstanceRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    
+    delete_user(UserName, Ctx);
 
-processor("GroupCallCenterAddInstanceRequest19", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+processor("GroupCallCenterAddInstanceRequest19", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    GrpId = em_utils:get_element_text(GroupId),
     
-processor("GroupCallCenterModifyInstanceRequest19", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    User = #subscriber{ user=UserName,
+                        group_id=GrpId,
+                        type='ACD',
+                        csprofile='IMT_VIRTUAL',
+                        pubid=UserName,
+                        sprofile=UserName },
     
-processor("GroupCallCenterDeleteInstanceRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    add_user(User, Ctx);
+    %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
+    %% Send request to EMA to create user, if there is publicID or phone in the event, 
+    %% make sure to update DB and send request to HSS / ENUM
+    
+processor("GroupCallCenterModifyInstanceRequest19", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
+    [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
+    [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
+ 
+    UserName = em_utils:get_element_text(ServiceUserId),
+    PublicId = em_utils:get_element_text(PublicUserIdentity),
+    
+    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+    Phone = em_utils:get_element_text(PhoneNumber),
+    
+    User = #subscriber{ user = UserName,
+                        pubid = PubId,
+                        phone = Phone,
+                        type = 'ACD', 
+                        csprofile = 'IMT_VIRTUAL' 
+                         },
+    
+    modify_user(User, Ctx);
+    
+processor("GroupCallCenterDeleteInstanceRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    
+    delete_user(UserName, Ctx);
      
-processor("GroupMeetMeConferencingAddInstanceRequest19", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+processor("GroupMeetMeConferencingAddInstanceRequest19", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    GrpId = em_utils:get_element_text(GroupId),
     
-processor("GroupMeetMeConferencingModifyInstanceRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    User = #subscriber{ user=UserName,
+                        group_id=GrpId,
+                        type='MEETME',
+                        csprofile='IMT_VIRTUAL',
+                        pubid=UserName,
+                        sprofile=UserName },
     
-processor("GroupMeetMeConferencingDeleteInstanceRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;    
+    add_user(User, Ctx);
+    %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
+    %% Send request to EMA to create user, if there is publicID or phone in the event, 
+    %% make sure to update DB and send request to HSS / ENUM
+    
+processor("GroupMeetMeConferencingModifyInstanceRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
+    [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
+    [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
+ 
+    UserName = em_utils:get_element_text(ServiceUserId),
+    PublicId = em_utils:get_element_text(PublicUserIdentity),
+    
+    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+    Phone = em_utils:get_element_text(PhoneNumber),
+    
+    User = #subscriber{ user = UserName,
+                        pubid = PubId,
+                        phone = Phone,
+                        type = 'MEETME', 
+                        csprofile = 'IMT_VIRTUAL' 
+                         },
+    
+    modify_user(User, Ctx);
+    
+processor("GroupMeetMeConferencingDeleteInstanceRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
+    UserName = em_utils:get_element_text(ServiceUserId),
+    
+    delete_user(UserName, Ctx);
     
 processor("GroupVoiceMessagingGroupModifyVoicePortalRequest", _Message, _Ctx) ->
     %% TODO: Investigate what to be done!
@@ -196,20 +306,30 @@ processor("UserAuthenticationModifyRequest", _Message, _Ctx) ->
     ignored;
 
 
-processor("GroupTrunkGroupAddInstanceRequest21", Message, _Ctx) ->
+processor("GroupTrunkGroupAddInstanceRequest21", Message, Ctx) ->
     InsideCommand = em_utils:get_element_childs(Message),
-    %[GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    [SipPassWord] = em_utils:get_elements(sipAuthenticationPassword, InsideCommand),
 
     [PilotUser] = em_utils:get_elements(pilotUser, InsideCommand),
-    [UserId] = em_utils:get_elements(userId, em_utils:get_element_childs(PilotUser)),
-    [Password] = em_utils:get_elements(password, em_utils:get_element_childs(PilotUser)),
+    [PilotUserId] = em_utils:get_elements(userId, em_utils:get_element_childs(PilotUser)),
     [LinePort] = em_utils:get_elements(linePort, em_utils:get_element_childs(PilotUser)),
  
-    NewUserId = em_utils:get_element_text(UserId),
-    _NewPassword = em_utils:get_element_text(Password),
-    _NewLinePort = em_utils:get_element_text(LinePort),
-
-    io:format("Pilot UserId: ~p~n",[NewUserId]);
+    UserName = em_utils:get_element_text(PilotUserId),
+    SipPass = em_utils:get_element_text(SipPassWord),
+    PubId = em_utils:get_element_text(LinePort),
+    GrpId = em_utils:get_element_text(GroupId),
+    
+    User = #subscriber{ user=UserName,
+                        pass=SipPass,
+                        group_id=GrpId,
+                        type='TRUNK',
+                        csprofile='BusinessTrunk',
+                        pubid=PubId,
+                        sprofile=PubId },
+    
+    add_user(User, Ctx);
+    
 
 processor("GroupTrunkGroupModifyInstanceRequest20sp1", _Message, _Ctx) ->
     %% TODO: Investigate what to be done!
@@ -245,9 +365,9 @@ processor(CommandType, _Message, _Ctx) ->
 %%% Internal functions
 %%%===================================================================
 
-add_user(#subscriber{user=UserName, csprofile=CSProfile, sprofile = SProfile, group_id = GrpId, type=UserType, pubid=PubId}, Ctx) ->
+add_user(#subscriber{user=UserName, pass=Pass, csprofile=CSProfile, sprofile = SProfile, group_id = GrpId, type=UserType, pubid=PubId}, Ctx) ->
     em_srd:add_user(UserName, GrpId, UserType, PubId),
-    em_hss:create({subscriber, UserName, CSProfile, SProfile}, Ctx),
+    em_hss:create({subscriber, UserName, Pass, CSProfile, SProfile}, Ctx),
     ?INFO_MSG("User created ~p", [UserName]).
     
 delete_user(UserName, Ctx) ->
@@ -295,56 +415,6 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:create({enum, NewPhone, CurrentPubId}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
-        {delete, none} when CurrentPhone =/= undefined ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
-            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
-            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
-            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
-            em_hss:create({teluri, UserName, CurrentPhone, UserName}, Ctx),
-            em_hss:create({enum, NewPhone, UserName}, Ctx),
-            em_srd:set_sipuri_default(UserName),
-            ok;
-        {delete, none} when CurrentPhone =:= undefined ->
-            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
-            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
-            em_srd:set_sipuri_default(UserName),
-            ok;     
-        {delete, delete} ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
-            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
-            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
-            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
-            em_srd:set_sipuri_default(UserName),
-            em_srd:delete_e164(UserName),
-            ok;
-        {delete, create} ->
-            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
-            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
-            em_hss:create({enum, NewPhone, UserName}, Ctx),
-            em_srd:set_e164(UserName, NewPhone),
-            em_srd:set_sipuri_default(UserName),
-            ok;       
-        {delete, update} ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
-            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
-            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
-            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
-            em_hss:create({enum, NewPhone, UserName}, Ctx),
-            em_srd:set_sipuri_default(UserName),
-            em_srd:set_e164(UserName, NewPhone),
-            ok;
         {update, none} when CurrentPhone =/= undefined -> 
             em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
             em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
@@ -356,7 +426,7 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             ok;
-        {update, none} when CurrentPhone =:= undefined -> 
+        {update, none} -> 
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
@@ -400,13 +470,10 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             
     end.
     
-
+% This planning of steps is creted in order to limit he numbers of entries in the case statement
 plan_change(#subscriber{user=UserName, pubid=NewPubId, phone=NewPhone}) ->
     CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone = em_srd:get_e164(UserName),
-    
-
-    
+    CurrentPhone = em_srd:get_e164(UserName),  
     PubIdAction = plan_change(CurrentPubId, NewPubId),
     PhoneAction = plan_change(CurrentPhone, NewPhone),
     {PubIdAction, PhoneAction}.
@@ -422,4 +489,13 @@ plan_change(_X, undefined) ->
 plan_change(_X, _Y) ->
     update.
 
-    
+% This fix is made because we are adding a default pubud to users, before 
+% the pubId is added via CommPilot
+fix_undefined(UserName, undefined) ->
+    UserName;
+fix_undefined(_UserName, PubId) ->
+    PubId.
+     
+
+         
+        

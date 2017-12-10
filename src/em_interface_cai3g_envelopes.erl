@@ -18,7 +18,7 @@
 -export([
     login/2,
     logout/1,
-    add_subscriber/4,
+    add_subscriber/5,
     add_teluri/4,
     add_pubid/4,
     delete_teluri/3,
@@ -59,7 +59,7 @@ logout(Session) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, Session]).
 
-add_subscriber(Session, User, CSProfile, SProfile) ->
+add_subscriber(Session, User, Pass, CSProfile, SProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -78,7 +78,7 @@ add_subscriber(Session, User, CSProfile, SProfile) ->
                         <isPsi>TRUE</isPsi>
                         <privateUser privateUserId=\"~s\">
                             <privateUserId>~s</privateUserId>
-                            <userPassword>123456</userPassword>
+                            <userPassword>~s</userPassword>
                             <allowedAuthMechanism>Digest</allowedAuthMechanism>
                             </privateUser>
                         <publicData publicIdValue=\"sip:~s\">
@@ -98,7 +98,7 @@ add_subscriber(Session, User, CSProfile, SProfile) ->
                 </cai3:MOAttributes>
             </cai3:Create>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, User, User, User, User, User, User, User, SProfile, SProfile, CSProfile, CSProfile]).
+    </soapenv:Envelope>",[Session, User, User, User, User, User, Pass, User, User, User, User, SProfile, SProfile, CSProfile, CSProfile]).
 
 add_teluri(Session, User, Phone, PubId) ->
     io_lib:format(
