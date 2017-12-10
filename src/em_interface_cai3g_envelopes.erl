@@ -13,14 +13,15 @@
 %% limitations under the License.
 
 -module(em_interface_cai3g_envelopes).
+-include("../include/em.hrl").
 
 -export([
     login/2,
     logout/1,
-    add_subscriber/3,
-    add_tel_uri/4,
+    add_subscriber/4,
+    add_teluri/4,
     add_pubid/4,
-    delete_tel_uri/3,
+    delete_teluri/3,
     delete_subscriber/2,
     delete_pubid/3,
     add_serviceprofile/4,
@@ -58,7 +59,7 @@ logout(Session) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, Session]).
 
-add_subscriber(Session, User, Profile) ->
+add_subscriber(Session, User, CSProfile, SProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -97,9 +98,9 @@ add_subscriber(Session, User, Profile) ->
                 </cai3:MOAttributes>
             </cai3:Create>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, User, User, User, User, User, User, User, User, User, Profile, Profile]).
+    </soapenv:Envelope>",[Session, User, User, User, User, User, User, User, User, User, SProfile, SProfile, CSProfile, CSProfile]).
 
-add_tel_uri(Session, User, E164, SipUri) ->
+add_teluri(Session, User, Phone, PubId) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -113,8 +114,8 @@ add_tel_uri(Session, User, E164, SipUri) ->
                 </cai3:MOId>
                 <cai3:MOAttributes>
                     <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
-                        <publicData publicIdValue=\"tel:+~s\">
-                            <publicIdValue>tel:+~s</publicIdValue>
+                        <publicData publicIdValue=\"tel:+299~s\">
+                            <publicIdValue>tel:+299~s</publicIdValue>
                             <privateUserId>~s</privateUserId>
                             <implicitRegSet>0</implicitRegSet>
                             <isDefault>FALSE</isDefault>
@@ -125,9 +126,9 @@ add_tel_uri(Session, User, E164, SipUri) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, E164, E164, User, SipUri]).
+    </soapenv:Envelope>",[Session, User, User, Phone, Phone, User, PubId]).
 
-delete_tel_uri(Session, User, E164) ->
+delete_teluri(Session, User, Phone) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -141,15 +142,15 @@ delete_tel_uri(Session, User, E164) ->
                 </cai3:MOId>
                 <cai3:MOAttributes>
                     <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
-                        <publicData publicIdValue=\"tel:+~s\">
+                        <publicData publicIdValue=\"tel:+299~s\">
                             <publicIdState>not_registered</publicIdState>
                         </publicData>
-                        <publicData publicIdValue=\"tel:+~s\" xsi:nil=\"true\"/>
+                        <publicData publicIdValue=\"tel:+299~s\" xsi:nil=\"true\"/>
                     </SetISMSubscription>
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, E164, E164]).
+    </soapenv:Envelope>",[Session, User, User, Phone, Phone]).
 
 delete_subscriber(Session, User) ->
     io_lib:format(
@@ -167,7 +168,7 @@ delete_subscriber(Session, User) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, User]).
     
-add_pubid(Session, User, PubIdValue, ServiceProfile) ->
+add_pubid(Session, User, PubId, SProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -181,8 +182,8 @@ add_pubid(Session, User, PubIdValue, ServiceProfile) ->
                 </cai3:MOId>
                 <cai3:MOAttributes>
                     <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
-                        <publicData publicIdValue=\"~s\">
-                            <publicIdValue>~s</publicIdValue>
+                        <publicData publicIdValue=\"sip:~s\">
+                            <publicIdValue>sip:~s</publicIdValue>
                             <privateUserId>~s</privateUserId>
                             <implicitRegSet>0</implicitRegSet>
                             <isDefault>FALSE</isDefault>
@@ -193,9 +194,9 @@ add_pubid(Session, User, PubIdValue, ServiceProfile) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, PubIdValue, PubIdValue, User, ServiceProfile]).
+    </soapenv:Envelope>",[Session, User, User, PubId, PubId, User, SProfile]).
     
-delete_pubid(Session, User, PubIdValue) ->
+delete_pubid(Session, User, PubId) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -209,18 +210,18 @@ delete_pubid(Session, User, PubIdValue) ->
                 </cai3:MOId>
                 <cai3:MOAttributes>
                     <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
-                        <publicData publicIdValue=\"~s\">
+                        <publicData publicIdValue=\"sip:~s\">
                             <publicIdState>not_registered</publicIdState>
                         </publicData>
-                        <publicData publicIdValue=\"~s\" xsi:nil=\"true\"/>
+                        <publicData publicIdValue=\"sip:~s\" xsi:nil=\"true\"/>
                     </SetISMSubscription>
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, PubIdValue, PubIdValue]).
+    </soapenv:Envelope>",[Session, User, User, PubId, PubId]).
     
 
-add_serviceprofile(Session, User, ServiceProfile, ConfiguredServiceProfile) ->
+add_serviceprofile(Session, User, SProfile, CSProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -247,9 +248,9 @@ add_serviceprofile(Session, User, ServiceProfile, ConfiguredServiceProfile) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, ServiceProfile, ServiceProfile, ConfiguredServiceProfile, ConfiguredServiceProfile]).
+    </soapenv:Envelope>",[Session, User, User, SProfile, SProfile, CSProfile, CSProfile]).
         
-delete_serviceprofile(Session, User, ServiceProfile) ->
+delete_serviceprofile(Session, User, SProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -269,7 +270,7 @@ delete_serviceprofile(Session, User, ServiceProfile) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, ServiceProfile]).
+    </soapenv:Envelope>",[Session, User, User, SProfile]).
     
 add_enum(Session, Phone, PubId) ->
     io_lib:format(

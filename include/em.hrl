@@ -12,6 +12,9 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
+-record(subscriber, {user, pubid, current_pubid, phone, current_phone, sprofile, csprofile, group_id, type, default_pubid }).
+
+-record(ctx, { session, ema_url, ema_user, ema_pass }).
 
 -define(ERROR_MSG(Format, Args),
 	error_logger:error_msg("(~p:~p:~p) " ++ Format,

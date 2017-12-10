@@ -14,70 +14,95 @@
 
 -module(em_events).
 
--export([process/3]).
+-export([process/2]).
 -include("../include/em.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-process("GroupAutoAttendantAddInstanceRequest20", Message, State) ->
+process(CommandType, Message) ->
+    
+    case CommandType of
+        ignored -> 
+            ok;
+        
+        _ -> 
+            {ok, Session} = em_hss:login(?EMA_USER, ?EMA_PASS),
+            processor(CommandType, Message, #ctx{session = Session}),
+            em_hss:logout(Session)
+            
+    end.
+    
+    
+processor("GroupAutoAttendantAddInstanceRequest20", Message, Ctx) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
     GrpId = em_utils:get_element_text(GroupId),
-
-    add_user(UserName, GrpId, 'virtual-user', State);
+    
+    User = #subscriber{ user=UserName,
+                        group_id=GrpId,
+                        type='AA',
+                        csprofile='IMT_VIRTUAL',
+                        pubid=UserName,
+                        sprofile=UserName },
+    
+    add_user(User, Ctx);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
     %% Send request to EMA to create user, if there is publicID or phone in the event, 
     %% make sure to update DB and send request to HSS / ENUM
-
-process("GroupAutoAttendantModifyInstanceRequest20", RepData, State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+    
+    
+processor("GroupAutoAttendantModifyInstanceRequest20", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
     [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
  
     UserName = em_utils:get_element_text(ServiceUserId),
-
-    NewSipUri = em_utils:get_element_text(PublicUserIdentity),
-    NewE164 = em_utils:get_element_text(PhoneNumber),
-
-    SipUri = em_db:get_sipuri(UserName),
-    E164 = em_db:get_e164(UserName),
-   
-    modify_e164(UserName, E164, NewE164, State),
+    PubId = em_utils:get_element_text(PublicUserIdentity),
+    Phone = em_utils:get_element_text(PhoneNumber),
     
-    E164U = em_db:get_e164(UserName),
-    modify_sipuri(UserName, SipUri, NewSipUri, E164U, State);
+    User = #subscriber{ user = UserName,
+                        pubid = PubId,
+                        phone = Phone,
+                        type = 'AA', 
+                        csprofile = 'IMT_VIRTUAL' 
+                         },
     
-    
-
-process("GroupAutoAttendantDeleteInstanceRequest", RepData, State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+    modify_user(User, Ctx);
+        
+processor("GroupAutoAttendantDeleteInstanceRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
     
-    ?INFO_MSG("Event: GroupAutoAttendantDeleteInstanceRequest ~p", [UserName]),
-    
-    delete_user(UserName, State);
-    %% TO DO: Query userId in DB, if the user has e164, 
-    %% ENUM record must be deleted via EMA together with the HSS entry
+    delete_user(UserName, Ctx);
 
-process("UserAddRequest17sp4", RepData, _State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+
+processor("UserAddRequest17sp4", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [G] = em_utils:get_elements(groupId, InsideCommand),
 
     UserName = em_utils:get_element_text(U),
     GrpId = em_utils:get_element_text(G),
-    add_user(UserName, GrpId, 'end-user', _State);
+    
+    User = #subscriber{ user=UserName,
+                        group_id=GrpId,
+                        type='USER',
+                        csprofile='IMT_CENTREX',
+                        pubid=UserName,
+                        sprofile=UserName },
+    
+    add_user(User, Ctx);
 
 
-process("UserModifyRequest17sp4", RepData, _State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+processor("UserModifyRequest17sp4", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [P] = em_utils:get_elements(phoneNumber, InsideCommand),
 
@@ -97,26 +122,35 @@ process("UserModifyRequest17sp4", RepData, _State) ->
     io:format("Trunk LinePort: ~p~n",[TrunkLinePort]),
 
     UserName = em_utils:get_element_text(U),
-    E164 = em_db:get_e164(UserName),
-    NewE164 = em_utils:get_element_text(P),
-    SipUri = em_db:get_sipuri(UserName),
-    NewSipUri = em_utils:get_element_text(L),
+    Phone = em_utils:get_element_text(P),
+    PubId = em_utils:get_element_text(L),
 
-    modify_sipuri(UserName, SipUri, NewSipUri, E164, _State),
-    modify_e164(UserName, E164, NewE164, _State);
+
+    User = #subscriber{ user = UserName,
+                        pubid = PubId,
+                        phone = Phone,
+                        type = 'AA', 
+                        csprofile = 'IMT_VIRTUAL' 
+                         },
+    
+    modify_user(User, Ctx);
+
+
+    %modify_sipuri(UserName, SipUri, NewSipUri, E164, _State),
+    %modify_e164(UserName, E164, NewE164, _State);
     
 
 
-process("UserDeleteRequest", RepData, _State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+processor("UserDeleteRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
 
     UserName = em_utils:get_element_text(U),
-    delete_user(UserName, _State);
+    delete_user(UserName, Ctx);
 
 
-process("GroupTrunkGroupAddInstanceRequest21", RepData, _State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+processor("GroupTrunkGroupAddInstanceRequest21", Message, _Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     %[GroupId] = em_utils:get_elements(groupId, InsideCommand),
 
     [PilotUser] = em_utils:get_elements(pilotUser, InsideCommand),
@@ -130,18 +164,18 @@ process("GroupTrunkGroupAddInstanceRequest21", RepData, _State) ->
 
     io:format("Pilot UserId: ~p~n",[NewUserId]);
 
-process("GroupTrunkGroupModifyInstanceRequest20sp1", _RepData, _State) ->
+processor("GroupTrunkGroupModifyInstanceRequest20sp1", _Message, _Ctx) ->
     %% TODO: Investigate what to be done!
     %% What to do on <pilotUserId xsi:nil="true" />
     ignored;
 
-process("GroupTrunkGroupDeleteInstanceRequest14sp4", _RepData, _State) ->
+processor("GroupTrunkGroupDeleteInstanceRequest14sp4", _Message, _Ctx) ->
     %% TODO: Investigate what to be done!
     ignored;
 
 
-process("GroupDeleteRequest", RepData, _State) ->
-    InsideCommand = em_utils:get_element_childs(RepData),
+processor("GroupDeleteRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
     [G] = em_utils:get_elements(groupId, InsideCommand),
     GroupId = em_utils:get_element_text(G),
 
@@ -149,96 +183,147 @@ process("GroupDeleteRequest", RepData, _State) ->
 
     lists:foreach(
         fun(I) ->
-            delete_user(I, _State)
+            delete_user(I, Ctx)
         end, Users);
- 
 
-process(CommandType, _RepData, _State) -> 
-    CommandType.
+
+processor(ignored, _Message, _Ctx) ->
+    ok;
+
+processor(CommandType, _Message, _Ctx) ->
+    ok = io:format("Received ~p ~n", [CommandType]).
+
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-add_user(UserName, GrpId, 'end-user', _State) ->
-    em_db:add_user(UserName, GrpId, 'end-user'),
-    em_db:set_sipuri(UserName, "sip:" ++ UserName),
-    ?INFO_MSG("User added: ~p", [UserName]);
-add_user(UserName, GrpId, 'virtual-user', State) ->
-    em_db:add_user(UserName, GrpId, 'virtual-user'),
-    em_db:set_sipuri(UserName, UserName),
-    em_interface_cai3g:create_subscriber(UserName, 'IMT_VIRTUAL', State),
-    ?INFO_MSG("User added: ~p", [UserName]).
-
-delete_user(UserName, State) ->
-    em_db:delete_user(UserName),
-    em_interface_cai3g:delete_subscriber(UserName, State),
-    ?INFO_MSG("User deleted: ~p", [UserName]).
-
-modify_e164(_UserName, undefined, undefined, _State) -> 
-    ignored;
-modify_e164(_UserName, Phone, Phone, _State) ->
-    ignored;
-modify_e164(UserName, undefined, NewPhone, State) -> 
-    PubId = em_db:get_sipuri(UserName),
-    em_db:set_e164(UserName, NewPhone),
-    em_interface_cai3g:add_enum(NewPhone, PubId, State),
-    em_interface_cai3g:add_tel_uri(UserName, NewPhone, PubId, State),
-    ?INFO_MSG("Phone added for: ~p", [UserName]);
-modify_e164(UserName, Phone, undefined, State) ->
-    PubId = em_db:get_sipuri(UserName),
-    em_db:set_e164(UserName, undefined),
-    em_interface_cai3g:delete_tel_uri(UserName, Phone, State),
-    em_interface_cai3g:delete_enum(Phone, PubId, State),
-    ?INFO_MSG("Phone deleted for: ~p", [UserName]);
-modify_e164(UserName, Phone, NewPhone, State) ->
-    PubId = em_db:get_sipuri(UserName),
-    em_db:set_e164(UserName, NewPhone),
-    em_interface_cai3g:delete_enum(UserName, Phone, PubId, State),
-    em_interface_cai3g:delete_tel_uri(UserName, Phone, State),
-    em_interface_cai3g:add_enum(UserName, NewPhone, PubId, State),
-    em_interface_cai3g:add_tel_uri(UserName, NewPhone, PubId, State),
-    ?INFO_MSG("Phone modified for: ~p", [UserName]).
+add_user(#subscriber{user=UserName, csprofile=CSProfile, sprofile = SProfile, group_id = GrpId, type=UserType, pubid=PubId}, Ctx) ->
+    em_srd:add_user(UserName, GrpId, UserType, PubId),
+    em_hss:create({subscriber, UserName, CSProfile, SProfile}, Ctx),
+    ?INFO_MSG("User created ~p", [UserName]).
     
+delete_user(UserName, Ctx) ->
+    CurrentPubId = em_srd:get_sipuri(UserName),
+    CurrentPhone = em_srd:get_e164(UserName),
     
-modify_sipuri(_UserName, PubId, PubId, _Phone, _State) ->
-    ignored;
-modify_sipuri(UserName, UserName, undefined, _Phone, _State) ->
-    ignored;
-modify_sipuri(UserName, PubId, undefined, undefined, State) ->
-    em_db:set_sipuri(UserName, UserName),
-    em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
-    em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
-    em_interface_cai3g:add_serviceprofile(UserName, UserName, "IMT_VIRTUAL", State),
-    em_interface_cai3g:add_pubid(UserName, "sip:" ++ UserName, UserName, State),   
-    ?INFO_MSG("PubId modified to default for: ~p", [UserName]);
-modify_sipuri(UserName, PubId, undefined, Phone, State) ->
-    em_db:set_sipuri(UserName, UserName),
-    em_interface_cai3g:delete_enum(Phone, PubId, State),  
-    em_interface_cai3g:delete_tel_uri(UserName, Phone, State),  
-    em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
-    em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
-    em_interface_cai3g:add_enum(Phone, UserName, State),
-    em_interface_cai3g:add_serviceprofile(UserName, UserName, "IMT_VIRTUAL", State),
-    em_interface_cai3g:add_pubid(UserName, "sip:" ++ UserName, UserName, State),
-    em_interface_cai3g:add_tel_uri(UserName, Phone, UserName, State),   
-    ?INFO_MSG("PubId modified to default for: ~p", [UserName]);    
-modify_sipuri(UserName, PubId, NewPubId, undefined, State) ->
-    em_db:set_sipuri(UserName, NewPubId),    
-    em_interface_cai3g:add_serviceprofile(UserName, NewPubId, "IMT_VIRTUAL", State),
-    em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
-    em_interface_cai3g:add_pubid(UserName, "sip:" ++ NewPubId, NewPubId, State),
-    em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
-    ?INFO_MSG("PubId modified for: ~p", [UserName]);
-modify_sipuri(UserName, PubId, NewPubId, Phone, State) ->
-    em_db:set_sipuri(UserName, NewPubId),
-    em_interface_cai3g:delete_enum(Phone, PubId, State),        
-    em_interface_cai3g:delete_tel_uri(UserName, Phone, State), 
-    em_interface_cai3g:add_serviceprofile(UserName, NewPubId, "IMT_VIRTUAL", State),
-    em_interface_cai3g:delete_pubid(UserName, "sip:" ++ PubId, State),
-    em_interface_cai3g:add_enum(Phone, NewPubId, State),    
-    em_interface_cai3g:add_pubid(UserName, "sip:" ++ NewPubId, NewPubId, State),
-    em_interface_cai3g:add_tel_uri(UserName, Phone, NewPubId, State),  
-    em_interface_cai3g:delete_serviceprofile(UserName, PubId, State),
-    ?INFO_MSG("PubId modified for: ~p", [UserName]).
+    case CurrentPhone of
+        undefined ->
+            em_hss:delete({subscriber, UserName}, Ctx),
+            em_srd:delete_user(UserName),
+            ?INFO_MSG("User deleted without ENUM ~p", [UserName]);
+        CurrentPhone ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({subscriber, UserName}, Ctx),
+            em_srd:delete_user(UserName),
+            ?INFO_MSG("User deleted with ENUM ~p", [UserName])
+    end.
+
+
+modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile, pubid=NewPubId}, Ctx) ->
+    CurrentPubId = em_srd:get_sipuri(UserName),
+    CurrentPhone = em_srd:get_e164(UserName),
+    case get_action(User) of
+        
+        {none, none} ->
+            ignore;
+        {none, delete} ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_srd:delete_e164(UserName),
+            ok;       
+        {none, update} ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
+            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_srd:set_e164(UserName, NewPhone),
+            ok;
+        {none, create} ->
+            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
+            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_srd:set_e164(UserName, NewPhone),
+            ok;
+        {delete, none} ->
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
+            em_srd:set_sipuri_default(UserName),
+            ok;       
+        {delete, delete} ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
+            em_srd:set_sipuri_default(UserName),
+            ok;
+        {delete, update} ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
+            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_srd:set_sipuri_default(UserName),
+            em_srd:set_e164(UserName, NewPhone),
+            ok;
+        {update, none} ->
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_srd:set_sipuri(UserName, NewPubId),
+            ok;
+        {update, update} ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
+            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_srd:set_sipuri(UserName, NewPubId),
+            em_srd:set_e164(UserName, NewPhone),
+            ok;
+        {update, delete} ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_srd:set_sipuri(UserName, NewPubId),
+            em_srd:delete_e164(UserName),
+            ok;
+        {ActionPubId, ActionPhone} ->
+            ?ERROR_MSG("Unknown action plan: ~p", [{ActionPubId, ActionPhone}])
+            
+    end.
+    
+
+get_action(#subscriber{user=UserName, pubid=NewPubId, phone=NewPhone}) ->
+    CurrentPubId = em_srd:get_sipuri(UserName),
+    CurrentPhone = em_srd:get_e164(UserName),
+    
+    PubIdAction = get_action(CurrentPubId, NewPubId),
+    PhoneAction = get_action(CurrentPhone, NewPhone),
+    {PubIdAction, PhoneAction}.
+    
+get_action(undefined, undefined) ->
+    none;
+get_action(undefined, _X) ->
+    create;
+get_action(_X, _X) ->
+    none;
+get_action(_X, undefined) ->
+    delete;
+get_action(_X, _Y) ->
+    update.
+
     

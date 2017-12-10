@@ -44,6 +44,7 @@ start_link(Host) ->
 
 
 init(Parent, Host) ->
+    process_flag(trap_exit, true),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     register(list_to_atom(Host),self()),
     connect(#state{socket = undefined, host = Host, ema_url = ?EMA_URL, ema_user = ?EMA_USER, ema_pass = ?EMA_PASS}).
@@ -103,7 +104,9 @@ process("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n", State) ->
 
 process(Data, State) ->
     {CommandType, Message} = top_parser(Data),
-    em_events:process(CommandType, Message, State),
+    
+    Pid = spawn_link(em_events, process, [CommandType, Message]),
+    await_result(Pid),
     loop(State).
 
 top_parser(Data) -> 
@@ -125,3 +128,17 @@ parser_message('BroadsoftDocument', Data)->
 
 parser_message(_,_)->
     {ignored,undefined}.
+    
+    
+await_result(Pid) ->
+    receive
+        {'EXIT', Pid, normal} -> 
+            ok;
+        {'EXIT', Pid, shutdown} -> 
+            ok;
+        {'EXIT', Pid, _ } -> 
+            ok
+    after 5000 ->
+            ?ERROR_MSG("Event process timeout: ~p", [Pid]),
+            timeout
+    end.
