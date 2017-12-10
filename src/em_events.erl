@@ -83,6 +83,50 @@ processor("GroupAutoAttendantDeleteInstanceRequest", Message, Ctx) ->
     delete_user(UserName, Ctx);
 
 
+processor("GroupHuntGroupAddInstanceRequest20", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+    
+processor("GroupHuntGroupModifyInstanceRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+    
+processor("GroupHuntGroupDeleteInstanceRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+
+processor("GroupCallCenterAddInstanceRequest19", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+    
+processor("GroupCallCenterModifyInstanceRequest19", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+    
+processor("GroupCallCenterDeleteInstanceRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+     
+processor("GroupMeetMeConferencingAddInstanceRequest19", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+    
+processor("GroupMeetMeConferencingModifyInstanceRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+    
+processor("GroupMeetMeConferencingDeleteInstanceRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;    
+    
+processor("GroupVoiceMessagingGroupModifyVoicePortalRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+
+processor("UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
+
 processor("UserAddRequest17sp4", Message, Ctx) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
@@ -139,14 +183,17 @@ processor("UserModifyRequest17sp4", Message, Ctx) ->
     %modify_sipuri(UserName, SipUri, NewSipUri, E164, _State),
     %modify_e164(UserName, E164, NewE164, _State);
     
-
-
 processor("UserDeleteRequest", Message, Ctx) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
 
     UserName = em_utils:get_element_text(U),
     delete_user(UserName, Ctx);
+
+
+processor("UserAuthenticationModifyRequest", _Message, _Ctx) ->
+    %% TODO: Investigate what to be done!
+    ignored;
 
 
 processor("GroupTrunkGroupAddInstanceRequest21", Message, _Ctx) ->
