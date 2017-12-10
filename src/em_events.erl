@@ -20,7 +20,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 process(CommandType, Message) ->
     
     case CommandType of
@@ -29,9 +28,10 @@ process(CommandType, Message) ->
         
         _ -> 
             {ok, Session} = em_hss:login(?EMA_USER, ?EMA_PASS),
+            ?INFO_MSG("EMA session created: ~p", [Session]),
             processor(CommandType, Message, #ctx{session = Session}),
-            em_hss:logout(Session)
-            
+            em_hss:logout(Session),
+            ?INFO_MSG("EMA session closed: ~p", [Session])
     end.
     
     
@@ -270,7 +270,11 @@ delete_user(UserName, Ctx) ->
 modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile, pubid=NewPubId}, Ctx) ->
     CurrentPubId = em_srd:get_sipuri(UserName),
     CurrentPhone = em_srd:get_e164(UserName),
-    case get_action(User) of
+    
+    PlannedChange = plan_change(User),
+    ?INFO_MSG("Executing plan: ~p", [PlannedChange]),
+    
+    case PlannedChange of
         
         {none, none} ->
             ignore;
@@ -282,22 +286,33 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
         {none, update} ->
             em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
             em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, CurrentPubId}, Ctx),
             em_hss:create({enum, NewPhone, UserName}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
         {none, create} ->
-            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
-            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, CurrentPubId}, Ctx),
+            em_hss:create({enum, NewPhone, CurrentPubId}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
-        {delete, none} ->
+        {delete, none} when CurrentPhone =/= undefined ->
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
+            em_hss:create({teluri, UserName, CurrentPhone, UserName}, Ctx),
+            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_srd:set_sipuri_default(UserName),
+            ok;
+        {delete, none} when CurrentPhone =:= undefined ->
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
             em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
             em_srd:set_sipuri_default(UserName),
-            ok;       
+            ok;     
         {delete, delete} ->
             em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
             em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
@@ -306,7 +321,18 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
             em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
             em_srd:set_sipuri_default(UserName),
+            em_srd:delete_e164(UserName),
             ok;
+        {delete, create} ->
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, UserName, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, UserName, UserName}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
+            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_srd:set_e164(UserName, NewPhone),
+            em_srd:set_sipuri_default(UserName),
+            ok;       
         {delete, update} ->
             em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
             em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
@@ -319,7 +345,18 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_srd:set_sipuri_default(UserName),
             em_srd:set_e164(UserName, NewPhone),
             ok;
-        {update, none} ->
+        {update, none} when CurrentPhone =/= undefined -> 
+            em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
+            em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, CurrentPhone, NewPubId}, Ctx),
+            em_hss:create({enum, NewPhone, NewPubId}, Ctx),
+            em_srd:set_sipuri(UserName, NewPubId),
+            ok;
+        {update, none} when CurrentPhone =:= undefined -> 
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
@@ -333,8 +370,18 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
             em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, UserName}, Ctx),
-            em_hss:create({enum, NewPhone, UserName}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, NewPubId}, Ctx),
+            em_hss:create({enum, NewPhone, NewPubId}, Ctx),
+            em_srd:set_sipuri(UserName, NewPubId),
+            em_srd:set_e164(UserName, NewPhone),
+            ok;
+        {update, create} ->
+            em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
+            em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
+            em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, NewPubId}, Ctx),
+            em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             em_srd:set_e164(UserName, NewPhone),
             ok;
@@ -349,28 +396,30 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_srd:delete_e164(UserName),
             ok;
         {ActionPubId, ActionPhone} ->
-            ?ERROR_MSG("Unknown action plan: ~p", [{ActionPubId, ActionPhone}])
+            ?ERROR_MSG("Unknown planned change: ~p", [{ActionPubId, ActionPhone}])
             
     end.
     
 
-get_action(#subscriber{user=UserName, pubid=NewPubId, phone=NewPhone}) ->
+plan_change(#subscriber{user=UserName, pubid=NewPubId, phone=NewPhone}) ->
     CurrentPubId = em_srd:get_sipuri(UserName),
     CurrentPhone = em_srd:get_e164(UserName),
     
-    PubIdAction = get_action(CurrentPubId, NewPubId),
-    PhoneAction = get_action(CurrentPhone, NewPhone),
+
+    
+    PubIdAction = plan_change(CurrentPubId, NewPubId),
+    PhoneAction = plan_change(CurrentPhone, NewPhone),
     {PubIdAction, PhoneAction}.
     
-get_action(undefined, undefined) ->
+plan_change(undefined, undefined) ->
     none;
-get_action(undefined, _X) ->
+plan_change(undefined, _X) ->
     create;
-get_action(_X, _X) ->
+plan_change(_X, _X) ->
     none;
-get_action(_X, undefined) ->
+plan_change(_X, undefined) ->
     delete;
-get_action(_X, _Y) ->
+plan_change(_X, _Y) ->
     update.
 
     
