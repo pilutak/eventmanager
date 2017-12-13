@@ -47,7 +47,9 @@ processor("GroupAutoAttendantAddInstanceRequest20", Message, Ctx) ->
                         type='AA',
                         csprofile='IMT_VIRTUAL',
                         pubid=UserName,
-                        sprofile=UserName },
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     add_user(User, Ctx);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
@@ -72,8 +74,10 @@ processor("GroupAutoAttendantModifyInstanceRequest20", Message, Ctx) ->
                         pubid = PubId,
                         phone = Phone,
                         type = 'AA', 
-                        csprofile = 'IMT_VIRTUAL' 
-                         },
+                        csprofile = 'IMT_VIRTUAL',
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     modify_user(User, Ctx);
         
@@ -97,7 +101,9 @@ processor("GroupHuntGroupAddInstanceRequest20", Message, Ctx) ->
                         type='HG',
                         csprofile='IMT_VIRTUAL',
                         pubid=UserName,
-                        sprofile=UserName },
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE'},
     
     add_user(User, Ctx);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
@@ -121,8 +127,10 @@ processor("GroupHuntGroupModifyInstanceRequest", Message, Ctx) ->
                         pubid = PubId,
                         phone = Phone,
                         type = 'HG', 
-                        csprofile = 'IMT_VIRTUAL' 
-                         },
+                        csprofile = 'IMT_VIRTUAL',
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     modify_user(User, Ctx);
     
@@ -145,7 +153,9 @@ processor("GroupCallCenterAddInstanceRequest19", Message, Ctx) ->
                         type='ACD',
                         csprofile='IMT_VIRTUAL',
                         pubid=UserName,
-                        sprofile=UserName },
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     add_user(User, Ctx);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
@@ -169,8 +179,10 @@ processor("GroupCallCenterModifyInstanceRequest19", Message, Ctx) ->
                         pubid = PubId,
                         phone = Phone,
                         type = 'ACD', 
-                        csprofile = 'IMT_VIRTUAL' 
-                         },
+                        csprofile = 'IMT_VIRTUAL',
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     modify_user(User, Ctx);
     
@@ -193,7 +205,9 @@ processor("GroupMeetMeConferencingAddInstanceRequest19", Message, Ctx) ->
                         type='MEETME',
                         csprofile='IMT_VIRTUAL',
                         pubid=UserName,
-                        sprofile=UserName },
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     add_user(User, Ctx);
     %% TO DO: Query the DB to see if the userId exist, if not, continue, else ignore.
@@ -217,8 +231,10 @@ processor("GroupMeetMeConferencingModifyInstanceRequest", Message, Ctx) ->
                         pubid = PubId,
                         phone = Phone,
                         type = 'MEETME', 
-                        csprofile = 'IMT_VIRTUAL' 
-                         },
+                        csprofile = 'IMT_VIRTUAL',
+                        ispsi='TRUE',
+                        irs='0',
+                        isdefault='FALSE' },
     
     modify_user(User, Ctx);
     
@@ -248,9 +264,11 @@ processor("UserAddRequest17sp4", Message, Ctx) ->
     User = #subscriber{ user=UserName,
                         group_id=GrpId,
                         type='USER',
-                        csprofile='IMT_CENTREX',
+                        csprofile='IMS_CENTREX',
                         pubid=UserName,
-                        sprofile=UserName },
+                        ispsi='FALSE',
+                        irs='1',
+                        isdefault='TRUE' },
     
     add_user(User, Ctx);
 
@@ -283,9 +301,22 @@ processor("UserModifyRequest17sp4", Message, Ctx) ->
     User = #subscriber{ user = UserName,
                         pubid = PubId,
                         phone = Phone,
-                        type = 'AA', 
-                        csprofile = 'IMT_VIRTUAL' 
+                        type = 'USER', 
+                        csprofile='IMS_CENTREX',
+                        ispsi='FALSE',
+                        irs='1',
+                        isdefault='TRUE' 
                          },
+                         
+    %TrunkUser = #subscriber{ user = UserName,
+    %                    pubid = PubId,
+    %                    phone = Phone,
+    %                    type = 'TRUNK', 
+    %                    csprofile='BusinessTrunk_wild',
+    %                    ispsi='TRUE',
+    %                    irs='0',
+    %                    isdefault='FALSE' 
+    %                     },
     
     modify_user(User, Ctx);
 
@@ -301,9 +332,15 @@ processor("UserDeleteRequest", Message, Ctx) ->
     delete_user(UserName, Ctx);
 
 
-processor("UserAuthenticationModifyRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+processor("UserAuthenticationModifyRequest", Message, Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [U] = em_utils:get_elements(userId, InsideCommand),
+    [P] = em_utils:get_elements(newPassword, InsideCommand),
+    
+    UserName = em_utils:get_element_text(U),
+    Pass = em_utils:get_element_text(P),
+    set_user_password(UserName, Pass, Ctx);
+
 
 
 processor("GroupTrunkGroupAddInstanceRequest21", Message, Ctx) ->
@@ -326,7 +363,9 @@ processor("GroupTrunkGroupAddInstanceRequest21", Message, Ctx) ->
                         type='TRUNK',
                         csprofile='BusinessTrunk',
                         pubid=PubId,
-                        sprofile=PubId },
+                        ispsi='FALSE',
+                        irs='1',
+                        isdefault='TRUE' },
     
     add_user(User, Ctx);
     
@@ -365,9 +404,9 @@ processor(CommandType, _Message, _Ctx) ->
 %%% Internal functions
 %%%===================================================================
 
-add_user(#subscriber{user=UserName, pass=Pass, csprofile=CSProfile, sprofile = SProfile, group_id = GrpId, type=UserType, pubid=PubId}, Ctx) ->
+add_user(#subscriber{user=UserName, ispsi=IsPsi, pass=Pass, csprofile=CSProfile, irs=IRS, isdefault=IsDefault, group_id=GrpId, type=UserType, pubid=PubId}, Ctx) ->
     em_srd:add_user(UserName, GrpId, UserType, PubId),
-    em_hss:create({subscriber, UserName, Pass, CSProfile, SProfile}, Ctx),
+    em_hss:create({subscriber, UserName, IsPsi, Pass, PubId, IRS, IsDefault, CSProfile}, Ctx),
     ?INFO_MSG("User created ~p", [UserName]).
     
 delete_user(UserName, Ctx) ->
@@ -386,8 +425,11 @@ delete_user(UserName, Ctx) ->
             ?INFO_MSG("User deleted with ENUM ~p", [UserName])
     end.
 
+set_user_password(UserName, Pass, Ctx) ->
+    ?INFO_MSG("Updating password: ~p", [UserName]),
+    em_hss:update({pass, UserName, Pass}, Ctx).
 
-modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile, pubid=NewPubId}, Ctx) ->
+modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile, pubid=NewPubId, irs=IRS, isdefault=IsDefault}, Ctx) ->
     CurrentPubId = em_srd:get_sipuri(UserName),
     CurrentPhone = em_srd:get_e164(UserName),
     
@@ -406,12 +448,12 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
         {none, update} ->
             em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
             em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, CurrentPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, CurrentPubId}, Ctx),
             em_hss:create({enum, NewPhone, UserName}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
         {none, create} ->
-            em_hss:create({teluri, UserName, NewPhone, CurrentPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, CurrentPubId}, Ctx),
             em_hss:create({enum, NewPhone, CurrentPubId}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
@@ -421,8 +463,8 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, CurrentPhone, NewPubId}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, CurrentPhone, IRS, IsDefault, NewPubId}, Ctx),
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             ok;
@@ -430,7 +472,7 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             ok;
         {update, update} ->
@@ -439,8 +481,8 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, NewPubId}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, NewPubId}, Ctx),
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             em_srd:set_e164(UserName, NewPhone),
@@ -449,8 +491,8 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, NewPubId}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, NewPubId}, Ctx),
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             em_srd:set_e164(UserName, NewPhone),
@@ -461,7 +503,7 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({pubid, UserName, CurrentPubId}, Ctx),
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
-            em_hss:create({pubid, UserName, NewPubId, NewPubId}, Ctx),
+            em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             em_srd:delete_e164(UserName),
             ok;

@@ -18,16 +18,17 @@
 -export([
     login/2,
     logout/1,
-    add_subscriber/5,
-    add_teluri/4,
-    add_pubid/4,
+    add_subscriber/8,
+    add_teluri/6,
+    add_pubid/6,
     delete_teluri/3,
     delete_subscriber/2,
     delete_pubid/3,
     add_serviceprofile/4,
     delete_serviceprofile/3,
     add_enum/3,
-    delete_enum/3
+    delete_enum/3,
+    set_pass/3
     ]).
     
 %%%===================================================================
@@ -59,7 +60,7 @@ logout(Session) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, Session]).
 
-add_subscriber(Session, User, Pass, CSProfile, SProfile) ->
+add_subscriber(Session, User, IsPsi, Pass, PubId, IRS, IsDefault, CSProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -75,7 +76,7 @@ add_subscriber(Session, User, Pass, CSProfile, SProfile) ->
                     <CreateISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
                         <subscriberId>~s</subscriberId>
                         <chargingProfId>DefaultChargingProfile</chargingProfId>
-                        <isPsi>TRUE</isPsi>
+                        <isPsi>~s</isPsi>
                         <privateUser privateUserId=\"~s\">
                             <privateUserId>~s</privateUserId>
                             <userPassword>~s</userPassword>
@@ -85,7 +86,8 @@ add_subscriber(Session, User, Pass, CSProfile, SProfile) ->
                             <publicIdValue>sip:~s</publicIdValue>
                             <privateUserId>~s</privateUserId>
                             <serviceProfileId>~s</serviceProfileId> 
-                            <implicitRegSet>0</implicitRegSet>
+                            <implicitRegSet>~s</implicitRegSet>
+                            <isDefault>~s</isDefault>
                         </publicData>
                         <subscriberServiceProfile serviceProfileId=\"~s\">
                             <serviceProfileId>~s</serviceProfileId>
@@ -98,9 +100,9 @@ add_subscriber(Session, User, Pass, CSProfile, SProfile) ->
                 </cai3:MOAttributes>
             </cai3:Create>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, User, User, User, Pass, User, User, User, User, SProfile, SProfile, CSProfile, CSProfile]).
+    </soapenv:Envelope>",[Session, User, User, User, IsPsi, User, User, Pass, PubId, PubId, User, PubId, IRS, IsDefault, PubId, PubId, CSProfile, CSProfile]).
 
-add_teluri(Session, User, Phone, PubId) ->
+add_teluri(Session, User, Phone, PubId, IRS, IsDefault ) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -117,8 +119,8 @@ add_teluri(Session, User, Phone, PubId) ->
                         <publicData publicIdValue=\"tel:+299~s\">
                             <publicIdValue>tel:+299~s</publicIdValue>
                             <privateUserId>~s</privateUserId>
-                            <implicitRegSet>0</implicitRegSet>
-                            <isDefault>FALSE</isDefault>
+                            <implicitRegSet>~s</implicitRegSet>
+                            <isDefault>~s</isDefault>
                             <serviceProfileId>~s</serviceProfileId>
                             <sessionBarringInd>FALSE</sessionBarringInd>
                         </publicData>
@@ -126,7 +128,7 @@ add_teluri(Session, User, Phone, PubId) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, Phone, Phone, User, PubId]).
+    </soapenv:Envelope>",[Session, User, User, Phone, Phone, User, IRS, IsDefault, PubId]).
 
 delete_teluri(Session, User, Phone) ->
     io_lib:format(
@@ -168,7 +170,7 @@ delete_subscriber(Session, User) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, User]).
     
-add_pubid(Session, User, PubId, SProfile) ->
+add_pubid(Session, User, PubId, IRS, IsDefault, SProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
         <soapenv:Header>
@@ -185,8 +187,8 @@ add_pubid(Session, User, PubId, SProfile) ->
                         <publicData publicIdValue=\"sip:~s\">
                             <publicIdValue>sip:~s</publicIdValue>
                             <privateUserId>~s</privateUserId>
-                            <implicitRegSet>0</implicitRegSet>
-                            <isDefault>FALSE</isDefault>
+                            <implicitRegSet>~s</implicitRegSet>
+                            <isDefault>~s</isDefault>
                             <serviceProfileId>~s</serviceProfileId>
                             <sessionBarringInd>FALSE</sessionBarringInd>
                         </publicData>
@@ -194,7 +196,7 @@ add_pubid(Session, User, PubId, SProfile) ->
                 </cai3:MOAttributes>
             </cai3:Set>
         </soapenv:Body>
-    </soapenv:Envelope>",[Session, User, User, PubId, PubId, User, SProfile]).
+    </soapenv:Envelope>",[Session, User, User, PubId, PubId, User, IRS, IsDefault, SProfile]).
     
 delete_pubid(Session, User, PubId) ->
     io_lib:format(
@@ -322,6 +324,30 @@ delete_enum(Session, Phone, PubId) ->
       </cai3:Delete>
    </soapenv:Body> 
 </soapenv:Envelope> ",[Session, Phone, Phone, PubId]).
+
+
+set_pass(Session, User, Pass) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+        <soapenv:Header>
+            <cai3:SessionId>~s</cai3:SessionId>
+        </soapenv:Header>
+        <soapenv:Body>
+            <cai3:Set>
+                <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
+                <cai3:MOId>
+                    <subscriberId>~s</subscriberId>
+                </cai3:MOId>
+                <cai3:MOAttributes>
+                    <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+                        <privateUser privateUserId=\"~s\">
+                            <userPassword>~s</userPassword>
+                        </privateUser>
+                    </SetISMSubscription>
+                </cai3:MOAttributes>
+            </cai3:Set>
+        </soapenv:Body>
+    </soapenv:Envelope>",[Session, User, User, User, Pass]).
 
 %%%===================================================================
 %%% Internal functions

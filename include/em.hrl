@@ -12,7 +12,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--record(subscriber, {user, pass="123456", pubid, phone, sprofile, csprofile, group_id, type}).
+-record(subscriber, {user, pass="123456", pubid, phone, sprofile, csprofile, group_id, type, ispsi, irs, isdefault}).
 
 -record(ctx, { session, ema_url, ema_user, ema_pass }).
 
