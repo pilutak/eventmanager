@@ -300,7 +300,8 @@ processor("UserModifyRequest17sp4", Message, Ctx) ->
 
     case TrunkLinePort of
         undefined ->
-            User = #subscriber{ user = UserName,
+            User = #subscriber{ 
+                user = UserName,
                 pubid = PubId,
                 phone = Phone,
                 type = 'USER', 
@@ -312,7 +313,8 @@ processor("UserModifyRequest17sp4", Message, Ctx) ->
                 modify_user(User, Ctx);
                     
         TrunkLinePort ->
-            User = #subscriber{ user = UserName,
+            User = #subscriber{ 
+                user = UserName,
                 pubid = PubId,
                 phone = Phone,
                 type = 'TRUNK', 
