@@ -295,30 +295,36 @@ processor("UserModifyRequest17sp4", Message, Ctx) ->
 
     UserName = em_utils:get_element_text(U),
     Phone = em_utils:get_element_text(P),
-    PubId = em_utils:get_element_text(L),
+    PublicId = em_utils:get_element_text(L),
+    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
 
-
-    User = #subscriber{ user = UserName,
-                        pubid = PubId,
-                        phone = Phone,
-                        type = 'USER', 
-                        csprofile='IMS_CENTREX',
-                        ispsi='FALSE',
-                        irs='1',
-                        isdefault='TRUE' 
-                         },
-                         
-    %TrunkUser = #subscriber{ user = UserName,
-    %                    pubid = PubId,
-    %                    phone = Phone,
-    %                    type = 'TRUNK', 
-    %                    csprofile='BusinessTrunk_wild',
-    %                    ispsi='TRUE',
-    %                    irs='0',
-    %                    isdefault='FALSE' 
-    %                     },
-    
-    modify_user(User, Ctx);
+    case TrunkLinePort of
+        undefined ->
+            User = #subscriber{ user = UserName,
+                pubid = PubId,
+                phone = Phone,
+                type = 'USER', 
+                csprofile='IMS_CENTREX',
+                ispsi='FALSE',
+                irs='1',
+                isdefault='TRUE'
+                },
+                modify_user(User, Ctx);
+                    
+        TrunkLinePort ->
+            User = #subscriber{ user = UserName,
+                pubid = PubId,
+                phone = Phone,
+                type = 'TRUNK', 
+                csprofile='BusinessTrunk_wild',
+                ispsi='TRUE',
+                irs='0',
+                isdefault='FALSE' 
+                },
+                delete_user(UserName, Ctx),
+                add_user(User, Ctx),
+                modify_user(User, Ctx)
+    end;
 
 
     %modify_sipuri(UserName, SipUri, NewSipUri, E164, _State),
@@ -429,6 +435,7 @@ set_user_password(UserName, Pass, Ctx) ->
     ?INFO_MSG("Updating password: ~p", [UserName]),
     em_hss:update({pass, UserName, Pass}, Ctx).
 
+
 modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile, pubid=NewPubId, irs=IRS, isdefault=IsDefault}, Ctx) ->
     CurrentPubId = em_srd:get_sipuri(UserName),
     CurrentPhone = em_srd:get_e164(UserName),
@@ -448,12 +455,12 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
         {none, update} ->
             em_hss:delete({enum, CurrentPhone, CurrentPubId}, Ctx),
             em_hss:delete({teluri, UserName, CurrentPhone}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, CurrentPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, CurrentPubId, IRS, IsDefault}, Ctx),
             em_hss:create({enum, NewPhone, UserName}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
         {none, create} ->
-            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, CurrentPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, CurrentPubId, IRS, IsDefault}, Ctx),
             em_hss:create({enum, NewPhone, CurrentPubId}, Ctx),
             em_srd:set_e164(UserName, NewPhone),
             ok;
@@ -464,7 +471,7 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
             em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, CurrentPhone, IRS, IsDefault, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, CurrentPhone, NewPubId, IRS, IsDefault}, Ctx),
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             ok;
@@ -482,7 +489,7 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
             em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, NewPubId, IRS, IsDefault}, Ctx),
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             em_srd:set_e164(UserName, NewPhone),
@@ -492,7 +499,7 @@ modify_user(User=#subscriber{user=UserName, phone=NewPhone, csprofile=CSProfile,
             em_hss:delete({serviceprofile, UserName, CurrentPubId}, Ctx),
             em_hss:create({serviceprofile, UserName, NewPubId, CSProfile}, Ctx),
             em_hss:create({pubid, UserName, NewPubId, IRS, IsDefault, NewPubId}, Ctx),
-            em_hss:create({teluri, UserName, NewPhone, IRS, IsDefault, NewPubId}, Ctx),
+            em_hss:create({teluri, UserName, NewPhone, NewPubId, IRS, IsDefault}, Ctx),
             em_hss:create({enum, NewPhone, NewPubId}, Ctx),
             em_srd:set_sipuri(UserName, NewPubId),
             em_srd:set_e164(UserName, NewPhone),
