@@ -245,13 +245,38 @@ processor("GroupMeetMeConferencingDeleteInstanceRequest", Message, Ctx) ->
     
     delete_user(UserName, Ctx);
     
-processor("GroupVoiceMessagingGroupModifyVoicePortalRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+processor("GroupVoiceMessagingGroupModifyVoicePortalRequest", Message, _Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
+    [P] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
+    [Pub] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
+    
+    Phone = em_utils:get_element_text(P),
+    UserName = em_utils:get_element_text(Pub),
+    GrpId = em_utils:get_element_text(GroupId),
 
-processor("UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    io:format(UserName),
+    io:format(GrpId),
+    io:format(Phone);
+    
+    %TODO Create data in IMS core
+
+processor("UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest", Message, _Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [U] = em_utils:get_elements(userId, InsideCommand),
+    [G] = em_utils:get_elements(groupMailServerUserId, InsideCommand),
+    [P] = em_utils:get_elements(groupMailServerPassword, InsideCommand),
+
+    UserName = em_utils:get_element_text(U),
+    MailUser = em_utils:get_element_text(G),
+    MailPass = em_utils:get_element_text(P),
+    
+    io:format(UserName),
+    io:format(MailUser),
+    io:format(MailPass);
+    
+    %TODO Create data in IMS core
 
 processor("UserAddRequest17sp4", Message, Ctx) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -261,6 +286,8 @@ processor("UserAddRequest17sp4", Message, Ctx) ->
     UserName = em_utils:get_element_text(U),
     GrpId = em_utils:get_element_text(G),
     
+    Pass = randchar(14),
+    
     User = #subscriber{ user=UserName,
                         group_id=GrpId,
                         type='USER',
@@ -268,7 +295,8 @@ processor("UserAddRequest17sp4", Message, Ctx) ->
                         pubid=UserName,
                         ispsi='FALSE',
                         irs='1',
-                        isdefault='TRUE' },
+                        isdefault='TRUE',
+                        pass=Pass },
     
     add_user(User, Ctx);
 
@@ -326,6 +354,8 @@ processor("UserModifyRequest17sp4", Message, Ctx) ->
                 delete_user(UserName, Ctx),
                 add_user(User, Ctx),
                 modify_user(User, Ctx)
+                %TODO We must not delete the user without keeping tack of the group ID
+                % We might need a different way to do this.
     end;
 
 
@@ -378,15 +408,27 @@ processor("GroupTrunkGroupAddInstanceRequest21", Message, Ctx) ->
     add_user(User, Ctx);
     
 
-processor("GroupTrunkGroupModifyInstanceRequest20sp1", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    %% What to do on <pilotUserId xsi:nil="true" />
-    ignored;
+processor("GroupTrunkGroupModifyInstanceRequest20sp1", Message, _Ctx) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
+    [SipPassWord] = em_utils:get_elements(sipAuthenticationPassword, InsideCommand),
 
-processor("GroupTrunkGroupDeleteInstanceRequest14sp4", _Message, _Ctx) ->
-    %% TODO: Investigate what to be done!
-    ignored;
+    [PilotUser] = em_utils:get_elements(pilotUser, InsideCommand),
+    [PilotUserId] = em_utils:get_elements(userId, em_utils:get_element_childs(PilotUser)),
+    [LinePort] = em_utils:get_elements(linePort, em_utils:get_element_childs(PilotUser)),
+ 
+    UserName = em_utils:get_element_text(PilotUserId),
+    SipPass = em_utils:get_element_text(SipPassWord),
+    PubId = em_utils:get_element_text(LinePort),
+    GrpId = em_utils:get_element_text(GroupId),
+    
+    io:format(UserName),
+    io:format(SipPass),
+    io:format(PubId),
+    io:format(GrpId);
 
+    %TODO find a way to get the pilot user ID, and update the password of the user. We might not need this event
+    % since the password update can be done via the SIP authentication modify on the pilot user.
 
 processor("GroupDeleteRequest", Message, Ctx) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -548,5 +590,13 @@ fix_undefined(_UserName, PubId) ->
     PubId.
      
 
-         
+% We use this to create a temporarily SIP password. The password is later
+% overwritten by an seperate event (not for virtual users, the password remains).
+randchar(N) ->
+   randchar(N, []).
+
+randchar(0, Acc) ->
+   Acc;
+randchar(N, Acc) ->
+   randchar(N - 1, [rand:uniform(26) + 96 | Acc]).         
         
