@@ -21,7 +21,7 @@
 
 -include("../include/em.hrl").
 
--record(state, { socket, host, ema_url, ema_user, ema_pass }).
+-record(state0, { socket, host, ema_url, ema_user, ema_pass }).
   
 %%%===================================================================
 %%% API
@@ -47,16 +47,16 @@ init(Parent, Host) ->
     process_flag(trap_exit, true),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     register(list_to_atom(Host),self()),
-    connect(#state{socket = undefined, host = Host, ema_url = ?EMA_URL, ema_user = ?EMA_USER, ema_pass = ?EMA_PASS}).
+    connect(#state0{socket = undefined, host = Host, ema_url = ?EMA_URL, ema_user = ?EMA_USER, ema_pass = ?EMA_PASS}).
 
 
-connect(State=#state{host=Host}) ->
+connect(State=#state0{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 32768},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
 	    %{ok,Dir}=file:get_cwd(),
         ?INFO_MSG("Socket connected: ~p", [Host]),
 	    %?LOG("Connected (em2.log located at ~p ) ~n",Dir),
-	    loop(State#state{socket=Sock});
+	    loop(State#state0{socket=Sock});
 
         {error,timeout} ->
         ?ERROR_MSG("Socket timeout, reconnecting: ~p", [Host]),

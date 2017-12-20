@@ -27,56 +27,46 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-create({subscriber, User, IsPsi, Pass, PubId, IRS, IsDefault, CSProfile}, #ctx{session = Session}) ->
-    ?INFO_MSG("Creating HSS subscriber: ~p", [{User, IsPsi, Pass, PubId, IRS, IsDefault, CSProfile}]),
-    {ok, _} = send(em_interface_cai3g_envelopes:add_subscriber(Session, User, IsPsi, Pass, PubId, IRS, IsDefault, CSProfile));
+create({subscriber, User}, #state{session = Session}) ->
+    {ok, _} = send(em_interface_cai3g_envelopes:add_subscriber(Session, User));
     
-create({enum, Phone, PubId}, #ctx{session = Session}) ->
-    ?INFO_MSG("Creating IPWorks ENUM record: ~p", [{Phone, PubId}]),
-    {ok, _} = send(em_interface_cai3g_envelopes:add_enum(Session, Phone, PubId));
+create({virtual_subscriber, UserName, Pass}, #state{session = Session}) ->
+    {ok, _} = send(em_interface_cai3g_envelopes:add_virtual_subscriber(Session, UserName, Pass));
     
-create({serviceprofile, User, PubId, CSProfile}, #ctx{session = Session}) ->
-    ?INFO_MSG("Creating HSS serviceprofile: ~p", [{User, PubId, CSProfile}]),        
-    {ok, _} = send(em_interface_cai3g_envelopes:add_serviceprofile(Session, User, PubId, CSProfile));
+create({enum, User}, #state{session = Session}) ->
+    {ok, _} = send(em_interface_cai3g_envelopes:add_enum(Session, User));
     
-create({pubid, User, PubId, IRS, IsDefault, SProfile}, #ctx{session = Session}) ->
-    ?INFO_MSG("Creating HSS PublicId: ~p", [{User, PubId, IRS, IsDefault, SProfile}]),
-    {ok, _} = send(em_interface_cai3g_envelopes:add_pubid(Session, User, PubId, IRS, IsDefault, SProfile));
+create({serviceprofile, User}, #state{session = Session}) ->     
+    {ok, _} = send(em_interface_cai3g_envelopes:add_serviceprofile(Session, User));
     
-create({teluri, User, Phone, PubId, IRS, IsDefault}, #ctx{session = Session}) ->
-    ?INFO_MSG("Creating HSS TelUri: ~p", [{User, Phone, PubId, IRS, IsDefault}]),
-    {ok, _} = send(em_interface_cai3g_envelopes:add_teluri(Session, User, Phone, PubId, IRS, IsDefault)).
+create({pubid, User}, #state{session = Session}) ->
+    {ok, _} = send(em_interface_cai3g_envelopes:add_pubid(Session, User));
     
-delete({enum, Phone, PubId}, #ctx{session = Session}) ->
-    ?INFO_MSG("Deleting IPWorld ENUM record: ~p", [{Phone, PubId}]), 
+create({teluri, User}, #state{session = Session}) ->
+    {ok, _} = send(em_interface_cai3g_envelopes:add_teluri(Session, User)).
+    
+delete({enum, Phone, PubId}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:delete_enum(Session, Phone, PubId));
 
-delete({subscriber, User}, #ctx{session = Session}) ->
-    ?INFO_MSG("Deleting HSS subscriber: ~p", [User]), 
+delete({subscriber, User}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:delete_subscriber(Session, User));
 
-delete({pubid, User, PubId}, #ctx{session = Session}) ->
-    ?INFO_MSG("Deleting HSS PublicId: ~p", [{User, PubId}]), 
+delete({pubid, User, PubId}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:delete_pubid(Session, User, PubId));
 
-delete({serviceprofile, User, PubId}, #ctx{session = Session}) ->
-    ?INFO_MSG("Deleting HSS serviceprofile: ~p", [{User, PubId}]), 
+delete({serviceprofile, User, PubId}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:delete_serviceprofile(Session, User, PubId));
     
-delete({teluri, User, Phone}, #ctx{session = Session}) ->
-    ?INFO_MSG("Deleting HSS Tel Uri: ~p", [{User, Phone}]), 
+delete({teluri, User, Phone}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:delete_teluri(Session, User, Phone)).
     
-update({pass, User, Pass}, #ctx{session = Session}) ->
-    ?INFO_MSG("Updating HSS Password: ~p", [{User, Pass}]), 
+update({pass, User, Pass}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:set_pass(Session, User, Pass)).
 
 login(User, Pass) ->
-    ?INFO_MSG("EMA Login: ~p", [{User, Pass}]),
     {ok, _} = em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:login(User, Pass))).
 
 logout(Session) ->
-    ?INFO_MSG("EMA Logout: ~p", [Session]),
     {ok, _} = em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:logout(Session))).    
     
 %%%===================================================================
