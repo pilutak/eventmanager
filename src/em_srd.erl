@@ -25,10 +25,13 @@
     set_sipuri/1,
     set_sipuri_default/1,
     get_e164/1,
-    get_sipuri/1
+    get_sipuri/1,
+    get_group/1,
+    user_exists/1,
+    set_pass/2
     ]).
 
-%-record(srd_user, {user_name, user_type, e164, sip_uri, group_id}).
+-record(em_srd, {user, pass, pubid, phone, group, vmuser, vmpass}).
 
 %%%===================================================================
 %%% API
@@ -45,17 +48,17 @@ create_schema() ->
 
 create_tables() ->
     {atomic, ok} = mnesia:create_table(
-        subscriber,
+        em_srd,
         [{disc_copies, [node()]},
         {type, set},
-        {attributes, record_info(fields, subscriber)}]),
+        {attributes, record_info(fields, em_srd)}]),
         ok.
 
 add_user(#event{user=UserName, group=Group, pubid=PubId}) ->
-    User=#subscriber{user=UserName, pubid=PubId, group=Group},
+    User=#em_srd{user=UserName, pubid=PubId, group=Group},
     
     F = fun () ->
-        case mnesia:read({subscriber, UserName}) =:= [] of
+        case mnesia:read({em_srd, UserName}) =:= [] of
             true -> mnesia:write(User);
             false -> {error, {activation_error, data_error, 'The user must not already exist in the SRD'}}
         end
@@ -66,8 +69,8 @@ add_user(#event{user=UserName, group=Group, pubid=PubId}) ->
 
 delete_user(UserName) ->
     F = fun () ->
-        case mnesia:read({subscriber, UserName}) =/= [] of
-            true -> mnesia:delete({subscriber, UserName});
+        case mnesia:read({em_srd, UserName}) =/= [] of
+            true -> mnesia:delete({em_srd, UserName});
             false -> {error, {termination_error, data_error, 'The user must exist in the SRD'}}
         end
     end,
@@ -76,71 +79,102 @@ delete_user(UserName) ->
 
 set_e164(#event{user=UserName, phone=Phone})->
     F = fun () ->
-        case mnesia:read({subscriber, UserName}) =:= [] of
-            true -> undefined;
+        case mnesia:read({em_srd, UserName}) =:= [] of
+            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
             false ->
-                [R] = mnesia:wread({subscriber, UserName}),
-                mnesia:write(R#subscriber{phone = Phone})
+                [R] = mnesia:wread({em_srd, UserName}),
+                mnesia:write(R#em_srd{phone = Phone})
         end
     end,
     mnesia:activity(transaction, F).
     
 delete_e164(UserId)->
     F = fun () ->
-        case mnesia:read({subscriber, UserId}) =:= [] of
-            true -> undefined;
+        case mnesia:read({em_srd, UserId}) =:= [] of
+            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
             false ->
-                [R] = mnesia:wread({subscriber, UserId}),
-                mnesia:write(R#subscriber{phone = undefined})
+                [R] = mnesia:wread({em_srd, UserId}),
+                mnesia:write(R#em_srd{phone = undefined})
         end
     end,
     mnesia:activity(transaction, F).
 
 get_e164(UserId) ->
     F = fun() ->
-        case mnesia:read({subscriber, UserId}) of  
-            [#subscriber{phone=E}] -> E;
-            [] -> undefined
+        case mnesia:read({em_srd, UserId}) of  
+            [#em_srd{phone=E}] -> E;
+            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
         end
     end,
     mnesia:activity(transaction, F).
 
 get_sipuri(UserId) ->
     F = fun() ->
-        case mnesia:read({subscriber, UserId}) of 
-            [#subscriber{pubid=S}] -> S;
-            [] -> undefined
+        case mnesia:read({em_srd, UserId}) of 
+            [#em_srd{pubid=S}] -> S;
+            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
         end
     end,
     mnesia:activity(transaction, F).
 
 set_sipuri(#event{user=UserName, pubid=PubId})->
     F = fun () ->
-        case mnesia:read({subscriber, UserName}) =:= [] of
-            true -> undefined;
+        case mnesia:read({em_srd, UserName}) =:= [] of
+            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
             false ->
-                [R] = mnesia:wread({subscriber, UserName}),
-                mnesia:write(R#subscriber{pubid = PubId})
+                [R] = mnesia:wread({em_srd, UserName}),
+                mnesia:write(R#em_srd{pubid = PubId})
         end
     end,
     mnesia:activity(transaction, F).
     
 set_sipuri_default(UserId)->
     F = fun () ->
-        case mnesia:read({subscriber, UserId}) =:= [] of
-            true -> undefined;
+        case mnesia:read({em_srd, UserId}) =:= [] of
+            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
             false ->
-                [R] = mnesia:wread({subscriber, UserId}),
-                mnesia:write(R#subscriber{pubid = UserId})
+                [R] = mnesia:wread({em_srd, UserId}),
+                mnesia:write(R#em_srd{pubid = UserId})
         end
     end,
     mnesia:activity(transaction, F).
+    
+get_group(UserId) ->
+    F = fun() ->
+        case mnesia:read({em_srd, UserId}) of  
+            [#em_srd{group=E}] -> E;
+            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
+        end
+    end,
+    mnesia:activity(transaction, F).
+    
+set_pass(UserName, Pass)->
+    F = fun () ->
+        case mnesia:read({em_srd, UserName}) =:= [] of
+            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
+            false ->
+                [R] = mnesia:wread({em_srd, UserName}),
+                mnesia:write(R#em_srd{pass = Pass})
+        end
+    end,
+    mnesia:activity(transaction, F).
+    
+user_exists(UserId) ->
+    F = fun() ->
+        case mnesia:read({em_srd, UserId}) of  
+            [] -> false;
+            _ -> true
+        end
+    end,
+    mnesia:activity(transaction, F).
+    
+
 
 get_users(GrpId) ->
     F = fun() ->
         Result = '$1',
-        User = #subscriber{user = '$1', group = GrpId, _ = '_'},
-        mnesia:select(subscriber, [{User, [], [Result]}])
+        User = #em_srd{user = '$1', group = GrpId, _ = '_'},
+        mnesia:select(em_srd, [{User, [], [Result]}])
     end,
     mnesia:activity(transaction, F).
     

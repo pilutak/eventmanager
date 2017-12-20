@@ -12,9 +12,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--record(subscriber, {user, pass, pubid, phone, sprofile, csprofile, type, ispsi, irs, isdefault, group}).
 -record(event, {user, pass, pubid, phone, group, csprofile, ispsi, irs, isdefault, sprofile}).
-
 -record(state, { session }).
 
 -define(ERROR_MSG(Format, Args),

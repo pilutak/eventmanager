@@ -48,6 +48,13 @@ processor(modify_virtual_user, Message) ->
     PublicId = em_utils:get_element_text(PublicUserIdentity),
     PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
     Phone = em_utils:get_element_text(PhoneNumber),
+    
+    
+    %Have_PubId = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =/= "true",
+    %io:format(Have_PubId),
+    
+    
+    
     Event=#event{user=UserName, pubid=PubId, phone=Phone, irs='0', isdefault='FALSE', csprofile='IMT_VIRTUAL', sprofile=PubId},
     modify_user(Event);
 
@@ -59,15 +66,18 @@ processor(modify_group_vp, Message) ->
     [P] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
     [Pub] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
     Phone = em_utils:get_element_text(P),
-    UserName = em_utils:get_element_text(Pub),
+    PubId = em_utils:get_element_text(Pub),
     GrpId = em_utils:get_element_text(GroupId),
-
-    io:format(UserName),
-    io:format(GrpId),
-    io:format(Phone);
+    UserName = PubId,
     
-    %TODO Create data in IMS core
-
+    Event=#event{user=PubId, pass=randchar(14), pubid=PubId, phone=Phone, group=GrpId, ispsi='TRUE', irs='0', isdefault='FALSE', csprofile='IMT_VIRTUAL'},   
+    case em_srd:user_exists(UserName) of
+        false ->
+            add_user(Event),
+            modify_user(Event);
+        true ->
+            modify_user(Event)
+    end;
 
 processor(modify_user_vm, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -82,7 +92,7 @@ processor(modify_user_vm, Message) ->
     io:format(MailUser),
     io:format(MailPass);
     
-    %TODO Create data in IMS core
+    %TODO Create data in surgemail
 
 processor(create_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -96,14 +106,28 @@ processor(create_user, Message) ->
     
 
 processor(modify_user, Message) ->
-  InsideCommand = em_utils:get_element_childs(Message),
-   [U] = em_utils:get_elements(userId, InsideCommand),
-   [P] = em_utils:get_elements(phoneNumber, InsideCommand),
+    InsideCommand = em_utils:get_element_childs(Message),
+    [U] = em_utils:get_elements(userId, InsideCommand),
+    [P] = em_utils:get_elements(phoneNumber, InsideCommand),
 
-   % Fetch endpoint data
-   [E] = em_utils:get_elements(endpoint, InsideCommand),
-   [A] = em_utils:get_elements(accessDeviceEndpoint, em_utils:get_element_childs(E)),
-   [L] = em_utils:get_elements(linePort, em_utils:get_element_childs(A)),
+    % Fetch endpoint data
+    [E] = em_utils:get_elements(endpoint, InsideCommand),
+    [A] = em_utils:get_elements(accessDeviceEndpoint, em_utils:get_element_childs(E)),
+    [L] = em_utils:get_elements(linePort, em_utils:get_element_childs(A)),
+
+    %% Fetch address/state
+    %[AD] = em_utils:get_elements(address, InsideCommand),
+    %[SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
+    %City = em_utils:get_element_text(SP),
+    
+    %PhoneContext = city_to_phonecontext(City),
+    
+    %case PhoneContext of
+    %    undefined ->
+    %        io:format("PhoneContext is undefined: ~p~n",[City]);
+    %    PhoneContext ->
+    %        io:format("PhoneContext is: ~p~n",[PhoneContext])
+    %end,
 
    % Fecth endpoint Trunk data
    [F] = em_utils:get_elements(endpoint, InsideCommand),
@@ -116,6 +140,9 @@ processor(modify_user, Message) ->
    Phone = em_utils:get_element_text(P),
    PublicId = em_utils:get_element_text(L),
    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+   
+   % In order to re-create the SIP Trunk user, we must first get the GrpId
+   GrpId = em_srd:get_group(UserName),
 
    case TrunkLinePort of
        undefined ->
@@ -131,20 +158,19 @@ processor(modify_user, Message) ->
                modify_user(Event);
                    
        TrunkLinePort ->
-           Event = #event{ 
+               Event = #event{ 
                user = UserName,
                pubid = PubId,
                phone = Phone, 
                csprofile='BusinessTrunk_wild',
                ispsi='TRUE',
                irs='0',
-               isdefault='FALSE' 
+               isdefault='FALSE',
+               group=GrpId 
                },
                delete_user(UserName),
                add_user(Event),
                modify_user(Event)
-               %TODO We must not delete the user without keeping tack of the group ID
-               % We might need a different way to do this.
    end;
     
 
@@ -246,6 +272,7 @@ delete_user(UserName) ->
     close_ema_session(State).    
     
 
+
 modify_user(Event=#event{user=UserName}) ->
     State=#state{session=open_ema_session()},
 
@@ -336,6 +363,7 @@ modify_user(Event=#event{user=UserName}) ->
 set_user_password(UserName, Pass) ->
     State=#state{session=open_ema_session()},
     em_hss:update({pass, UserName, Pass}, State),
+    em_srd:set_pass(UserName, Pass),
      close_ema_session(State).
     
     
@@ -414,6 +442,8 @@ select_processor("GroupMeetMeConferencingDeleteInstanceRequest") ->
     delete_virtual_user;
 select_processor("UserAddRequest17sp4") ->
     create_user;
+select_processor("UserModifyRequest17sp4") ->
+    modify_user;
 select_processor("UserDeleteRequest") ->
     delete_user;
 select_processor("UserAuthenticationModifyRequest") ->
@@ -428,3 +458,43 @@ select_processor("GroupDeleteRequest") ->
     delete_group;
 select_processor(_) ->
     ignored.
+    
+    
+    
+%city_to_phonecontext('Nuuk') ->
+%    'nuk.tg.gl';  
+%city_to_phonecontext('Nanortalik') ->
+%    'nan.tg.gl'; 
+%city_to_phonecontext('Narsaq') ->
+%    'nar.tg.gl';
+%city_to_phonecontext('Qaqortoq') ->
+%    'qaq.tg.gl';
+%city_to_phonecontext('Qassiarsuk') ->
+%    'qsk.tg.gl';
+%city_to_phonecontext('Narsarsuaq') ->
+%    'nrs.tg.gl';
+%city_to_phonecontext('Igaliku') ->
+%    'iga.tg.gl';
+%city_to_phonecontext('Paamiut') ->
+%    'paa.tg.gl';
+%city_to_phonecontext('Maniitsoq') ->
+%    'man.tg.gl';
+%city_to_phonecontext('Kangerlussuaq') ->
+%    'kan.tg.gl';
+%city_to_phonecontext('Sisimiut') ->
+%    'sis.tg.gl';
+%city_to_phonecontext('Aasiaat') ->
+%    'aas.tg.gl';
+%city_to_phonecontext('Qeqertarsuaq') ->
+%    'qeq.tg.gl';
+%city_to_phonecontext('Ilulissat') ->
+%    'ilu.tg.gl';
+%city_to_phonecontext('Qasigiannguit') ->
+%    'qas.tg.gl';
+%city_to_phonecontext('Upernavik') ->
+%    'upv.tg.gl';
+%city_to_phonecontext('Uummannaq') ->
+%    'uum.tg.gl';
+%city_to_phonecontext(City) ->
+%    City.
+        
