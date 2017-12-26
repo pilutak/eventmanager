@@ -17,28 +17,27 @@
 -export([process/2]).
 -include("../include/em.hrl").
 
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 process(CommandType, Message) ->
-    ProcessorType = select_processor(CommandType), 
-    processor(ProcessorType, Message).
-    %TODO: We should only open EMA sessions in supported commands
+    Processor = maps:get(CommandType, processors(), ignored),
+    processor(Processor, Message).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-processor(create_virtual_user, Message) ->
+processor(create_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
-    GrpId = em_utils:get_element_text(GroupId),
-    
+    GrpId = em_utils:get_element_text(GroupId), 
     Event=#event{user=UserName, pubid=UserName, group=GrpId, sprofile=UserName},
     em_processor_service:create(type_is_virtual(Event));
 
-processor(modify_virtual_user, Message) ->
+processor(modify_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
@@ -47,13 +46,10 @@ processor(modify_virtual_user, Message) ->
     UserName = em_utils:get_element_text(ServiceUserId),
     PublicId = em_utils:get_element_text(PublicUserIdentity),
     Phone = em_utils:get_element_text(PhoneNumber),
-    
     PubId_is_nil = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =:= "true",
     Phone_is_nil = em_utils:get_element_attributes('xsi:nil',PhoneNumber) =:= "true",
-    
     Pub = nil_fix(PublicId, PubId_is_nil), 
     Pho = nil_fix(Phone, Phone_is_nil),        
-    
     Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub},
     em_processor_service:modify(type_is_virtual(Event));
     
@@ -67,8 +63,8 @@ processor(modify_group_vp, Message) ->
     PubId = em_utils:get_element_text(Pub),
     GrpId = em_utils:get_element_text(GroupId),
     UserName = PubId,
+    Event=#event{user=PubId, pubid=PubId, phone=Phone, group=GrpId},  
     
-    Event=#event{user=PubId, pubid=PubId, phone=Phone, group=GrpId},   
     case em_srd:user_exists(UserName) of
         false ->
             em_processor_service:create(type_is_virtual(Event)),
@@ -82,14 +78,10 @@ processor(modify_user_vm, Message) ->
     [U] = em_utils:get_elements(userId, InsideCommand),
     [G] = em_utils:get_elements(groupMailServerUserId, InsideCommand),
     [P] = em_utils:get_elements(groupMailServerPassword, InsideCommand),
-    UserName = em_utils:get_element_text(U),
-    MailUser = em_utils:get_element_text(G),
-    MailPass = em_utils:get_element_text(P),
-    
-    io:format(UserName),
-    io:format(MailUser),
-    io:format(MailPass);
-    
+    _UserName = em_utils:get_element_text(U),
+    _MailUser = em_utils:get_element_text(G),
+    _MailPass = em_utils:get_element_text(P);
+        
     %TODO Create data in surgemail
 
 processor(create_user, Message) ->
@@ -98,7 +90,6 @@ processor(create_user, Message) ->
     [G] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(U),
     GrpId = em_utils:get_element_text(G),
-
     Event=#event{user=UserName, pubid=UserName, group=GrpId, sprofile=UserName},
     em_processor_user:create(type_is_user(Event));
     
@@ -113,51 +104,48 @@ processor(modify_user, Message) ->
     [A] = em_utils:get_elements(accessDeviceEndpoint, em_utils:get_element_childs(E)),
     [L] = em_utils:get_elements(linePort, em_utils:get_element_childs(A)),
 
-    %% Fetch address/state
-    %[AD] = em_utils:get_elements(address, InsideCommand),
-    %[SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
-    %City = em_utils:get_element_text(SP),
+    %% Fetch address/state (used for 112/113 emergency routing)
+    [AD] = em_utils:get_elements(address, InsideCommand),
+    [SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
+    City = em_utils:get_element_text(SP),
+    PhoneContext = maps:get(City, phonecontexts(), undefined),
     
-    %PhoneContext = city_to_phonecontext(City),
+    case PhoneContext of
+        undefined ->
+            ok;
+        PhoneContext ->
+            io:format("PhoneContext is: ~p~n",[PhoneContext])
+    end,
     
-    %case PhoneContext of
-    %    undefined ->
-    %        io:format("PhoneContext is undefined: ~p~n",[City]);
-    %    PhoneContext ->
-    %        io:format("PhoneContext is: ~p~n",[PhoneContext])
-    %end,
-
-   % Fecth endpoint Trunk data
-   [F] = em_utils:get_elements(endpoint, InsideCommand),
-   [T] = em_utils:get_elements(trunkAddressing, em_utils:get_element_childs(F)),
-   [TG] = em_utils:get_elements(trunkGroupDeviceEndpoint, em_utils:get_element_childs(T)),
-   [LP] = em_utils:get_elements(linePort, em_utils:get_element_childs(TG)),
-   TrunkLinePort = em_utils:get_element_text(LP),
-   io:format("Trunk LinePort: ~p~n",[TrunkLinePort]),
-   UserName = em_utils:get_element_text(U),
-   Phone = em_utils:get_element_text(P),
-   PublicId = em_utils:get_element_text(L),
-   PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+    
+    % Fecth endpoint Trunk data
+    [F] = em_utils:get_elements(endpoint, InsideCommand),
+    [T] = em_utils:get_elements(trunkAddressing, em_utils:get_element_childs(F)),
+    [TG] = em_utils:get_elements(trunkGroupDeviceEndpoint, em_utils:get_element_childs(T)),
+    [LP] = em_utils:get_elements(linePort, em_utils:get_element_childs(TG)),
+    TrunkLinePort = em_utils:get_element_text(LP),
+    io:format("Trunk LinePort: ~p~n",[TrunkLinePort]),
+    UserName = em_utils:get_element_text(U),
+    Phone = em_utils:get_element_text(P),
+    PublicId = em_utils:get_element_text(L),
+    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
    
-   PubId_is_nil = em_utils:get_element_attributes('xsi:nil',L) =:= "true",
-   Phone_is_nil = em_utils:get_element_attributes('xsi:nil',P) =:= "true",
+    PubId_is_nil = em_utils:get_element_attributes('xsi:nil',L) =:= "true",
+    Phone_is_nil = em_utils:get_element_attributes('xsi:nil',P) =:= "true",
    
-   Pub = nil_fix(PubId, PubId_is_nil),        
-   Pho = nil_fix(Phone, Phone_is_nil),
+    Pub = nil_fix(PubId, PubId_is_nil),        
+    Pho = nil_fix(Phone, Phone_is_nil),
    
-   % In order to re-create the SIP Trunk user, we must first get the GrpId
-   GrpId = em_srd:get_group(UserName),
-   
-   Event=#event{user = UserName, pubid = Pub, phone = Pho, group=GrpId },
-   case TrunkLinePort of
-       undefined ->
-           em_processor_user:modify(type_is_user(Event));
-       TrunkLinePort ->
-           em_processor_user:modify(type_is_trunk(Event))
-   end;
+    Event=#event{user = UserName, pubid = Pub, phone = Pho, group=em_srd:get_group(UserName), sprofile=Pub},
+    case TrunkLinePort of
+        undefined ->
+            em_processor_user:modify(type_is_user(Event));
+        TrunkLinePort ->
+            em_processor_user:modify(type_is_trunk(Event))
+    end;
 
 
-processor(delete_virtual_user, Message) ->
+processor(delete_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
@@ -167,7 +155,7 @@ processor(delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     UserName = em_utils:get_element_text(U),
-    em_processor_user:delete(UserName);
+    em_processor_user:delete(#event{user=UserName});
 
 processor(set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -232,9 +220,7 @@ set_user_password(UserName, Pass) ->
     State=#state{session=open_ema_session()},
     em_hss:update({pass, UserName, Pass}, State),
     em_srd:set_pass(UserName, Pass),
-     close_ema_session(State).
-    
-
+    close_ema_session(State).
 
 type_is_virtual(Event) ->
     Event#event{type='virtual',
@@ -267,14 +253,12 @@ type_is_pilot(Event) ->
                   isdefault='TRUE',
                   irs='1'}.  
 
-
 nil_fix(undefined, false) ->
     undefined;
 nil_fix(undefined, true) ->
     nil;
 nil_fix(X, _) ->
     X.
-
 
 
 open_ema_session() ->
@@ -291,7 +275,7 @@ close_ema_session(#state{session=Session}) ->
 % overwritten by an seperate event (not for virtual users, the password remains).
 randchar(N) ->
    randchar(N, []).
-
+   
 randchar(0, Acc) ->
    Acc;
 randchar(N, Acc) ->
@@ -306,85 +290,51 @@ fix_undefined(_UserName, PubId) ->
     PubId.
         
 
-select_processor("GroupAutoAttendantAddInstanceRequest20") ->
-    create_virtual_user;
-select_processor("GroupAutoAttendantModifyInstanceRequest20") ->
-    modify_virtual_user;
-select_processor("GroupAutoAttendantDeleteInstanceRequest") ->
-    delete_virtual_user;
-select_processor("GroupHuntGroupAddInstanceRequest20") ->
-    create_virtual_user;
-select_processor("GroupHuntGroupModifyInstanceRequest") ->
-    modify_virtual_user;
-select_processor("GroupHuntGroupDeleteInstanceRequest") ->
-    delete_virtual_user;
-select_processor("GroupCallCenterAddInstanceRequest19") ->
-    create_virtual_user;
-select_processor("GroupCallCenterModifyInstance") ->
-    modify_virtual_user;
-select_processor("GroupCallCenterDeleteInstanceRequest") ->
-    delete_virtual_user;
-select_processor("GroupMeetMeConferencingAddInstanceRequest19") ->
-    create_virtual_user;
-select_processor("GroupMeetMeConferencingModifyInstanceRequest") ->
-    modify_virtual_user;
-select_processor("GroupMeetMeConferencingDeleteInstanceRequest") ->
-    delete_virtual_user;
-select_processor("UserAddRequest17sp4") ->
-    create_user;
-select_processor("UserModifyRequest17sp4") ->
-    modify_user;
-select_processor("UserDeleteRequest") ->
-    delete_user;
-select_processor("UserAuthenticationModifyRequest") ->
-    set_password;
-select_processor("GroupTrunkGroupAddInstanceRequest21") ->
-    create_trunk;
-select_processor("GroupVoiceMessagingGroupModifyVoicePortalRequest") ->
-    modify_group_vp;
-select_processor("UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest") ->
-    modify_user_vm;
-select_processor("GroupDeleteRequest") ->
-    delete_group;
-select_processor(_) ->
-    ignored.
+processors() ->
+    #{  
+        "GroupAutoAttendantAddInstanceRequest20" => create_service,
+        "GroupAutoAttendantModifyInstanceRequest20" => modify_service,
+        "GroupAutoAttendantDeleteInstanceRequest" => delete_service,
+        "GroupHuntGroupAddInstanceRequest20" => create_service,
+        "GroupHuntGroupModifyInstanceRequest" => modify_service,
+        "GroupHuntGroupDeleteInstanceRequest" => delete_service,
+        "GroupCallCenterAddInstanceRequest19" => create_service,
+        "GroupCallCenterModifyInstanceRequest" => modify_service,
+        "GroupCallCenterDeleteInstanceRequest" => delete_service,
+        "GroupMeetMeConferencingAddInstanceRequest19" => create_service,
+        "GroupMeetMeConferencingModifyInstanceRequest" => modify_service,
+        "GroupMeetMeConferencingDeleteInstanceRequest" => delete_service,
+        "UserAddRequest17sp4" => create_user,
+        "UserModifyRequest17sp4" => modify_user,
+        "UserDeleteRequest" => delete_user,
+        "UserAuthenticationModifyRequest" => set_password,
+        "GroupTrunkGroupAddInstanceRequest21" => create_trunk,
+        "GroupVoiceMessagingGroupModifyVoicePortalRequest" => modify_group_vp,
+        "UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest" => modify_user_vm,
+        "GroupDeleteRequest" => delete_group
+    }.
+
+phonecontexts() ->
+    #{
+        "Nuuk" => 'nuk.tg.gl',
+        "Nanortalik" => 'nan.tg.gl',
+        "Narsaq" => 'nar.tg.gl',
+        "Qaqortoq" => 'qaq.tg.gl',
+        "Qassiarsuk" => 'qsk.tg.gl',
+        "Narsarsuaq" => 'nrs.tg.gl',
+        "Igaliku" => 'iga.tg.gl',
+        "Paamiut" => 'paa.tg.gl',
+        "Maniitsoq" => 'man.tg.gl',
+        "Kangerlussuaq" => 'kan.tg.gl',
+        "Sisimiut" => 'sis.tg.gl',
+        "Aasiaat" => 'aas.tg.gl',
+        "Qeqertarsuaq" => 'qeq.tg.gl',
+        "Ilulissat" => 'ilu.tg.gl',
+        "Qasigiannguit" => 'qas.tg.gl',
+        "Upernavik" => 'upv.tg.gl',
+        "Uummannaq" =>'uum.tg.gl',
+        "Alaska" =>'alaska.tg.gl'
+    }.
     
-    
-    
-%city_to_phonecontext('Nuuk') ->
-%    'nuk.tg.gl';  
-%city_to_phonecontext('Nanortalik') ->
-%    'nan.tg.gl'; 
-%city_to_phonecontext('Narsaq') ->
-%    'nar.tg.gl';
-%city_to_phonecontext('Qaqortoq') ->
-%    'qaq.tg.gl';
-%city_to_phonecontext('Qassiarsuk') ->
-%    'qsk.tg.gl';
-%city_to_phonecontext('Narsarsuaq') ->
-%    'nrs.tg.gl';
-%city_to_phonecontext('Igaliku') ->
-%    'iga.tg.gl';
-%city_to_phonecontext('Paamiut') ->
-%    'paa.tg.gl';
-%city_to_phonecontext('Maniitsoq') ->
-%    'man.tg.gl';
-%city_to_phonecontext('Kangerlussuaq') ->
-%    'kan.tg.gl';
-%city_to_phonecontext('Sisimiut') ->
-%    'sis.tg.gl';
-%city_to_phonecontext('Aasiaat') ->
-%    'aas.tg.gl';
-%city_to_phonecontext('Qeqertarsuaq') ->
-%    'qeq.tg.gl';
-%city_to_phonecontext('Ilulissat') ->
-%    'ilu.tg.gl';
-%city_to_phonecontext('Qasigiannguit') ->
-%    'qas.tg.gl';
-%city_to_phonecontext('Upernavik') ->
-%    'upv.tg.gl';
-%city_to_phonecontext('Uummannaq') ->
-%    'uum.tg.gl';
-%city_to_phonecontext(City) ->
-%    City.
+
         
