@@ -24,7 +24,7 @@ start(_Type, _Args) ->
 	
     case em_sup:start_link() of
 	{ok, Pid} ->
-	    case em_interface_ocir:start_connection() of
+	    case em_reader:start_connection() of
 		ok ->
 		    {ok, Pid};
 		Err ->

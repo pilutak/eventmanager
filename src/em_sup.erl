@@ -24,12 +24,12 @@ start_link() ->
  
 init([]) ->
     EMOCIRSUP =
-        {em_interface_ocir_sup,
-         {em_interface_ocir_sup, start_link, []},
+        {em_reader_sup,
+         {em_reader_sup, start_link, []},
          permanent,
          infinity,
          supervisor,
-         [em_interface_ocir_sup]},
+         [em_reader_sup]},
     
     {ok,{{one_for_one,10,1},
 	 [EMOCIRSUP]}}.    

@@ -12,18 +12,31 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(em).
- 
-%% API
--export([close_connection/1]).
+-module(em_reader_sup).
+-behaviour(supervisor).
 
+-export([start_link/0, open/1]).
+
+%% supervisor.
+-export([init/1]).
+
+-define(SUPERVISOR, ?MODULE).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-close_connection(Host) ->
-    Pid = whereis(list_to_atom(Host)),
-    supervisor:terminate_child(em_reader_sup, Pid),
-    supervisor:delete_child(em_reader_sup, Pid).
-  
+-spec start_link() -> {ok, pid()}.
+start_link() ->
+    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
+
+open(Host) ->
+    {ok, Pid} = supervisor:start_child(?MODULE, [Host]),
+    register(list_to_atom(Host), Pid).
+
+%% supervisor.
+
+init([]) ->
+    Procs = [{em_reader, {em_reader, start_link, []},
+	      permanent, 5000, worker, [em_reader]}],
+    {ok, {{simple_one_for_one, 10, 10}, Procs}}.

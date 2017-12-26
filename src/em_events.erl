@@ -34,9 +34,9 @@ processor(create_virtual_user, Message) ->
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
     GrpId = em_utils:get_element_text(GroupId),
-    Event=#event{user=UserName, pass=randchar(14), pubid=UserName, group=GrpId, ispsi='TRUE', irs='0', isdefault='FALSE', csprofile='IMT_VIRTUAL'},
     
-    add_user(Event);
+    Event=#event{user=UserName, pubid=UserName, group=GrpId, sprofile=UserName},
+    em_processor_service:create(type_is_virtual(Event));
 
 processor(modify_virtual_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -46,19 +46,17 @@ processor(modify_virtual_user, Message) ->
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
     UserName = em_utils:get_element_text(ServiceUserId),
     PublicId = em_utils:get_element_text(PublicUserIdentity),
-    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
     Phone = em_utils:get_element_text(PhoneNumber),
     
+    PubId_is_nil = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =:= "true",
+    Phone_is_nil = em_utils:get_element_attributes('xsi:nil',PhoneNumber) =:= "true",
     
-    %Have_PubId = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =/= "true",
-    %io:format(Have_PubId),
+    Pub = nil_fix(PublicId, PubId_is_nil), 
+    Pho = nil_fix(Phone, Phone_is_nil),        
     
+    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub},
+    em_processor_service:modify(type_is_virtual(Event));
     
-    
-    Event=#event{user=UserName, pubid=PubId, phone=Phone, irs='0', isdefault='FALSE', csprofile='IMT_VIRTUAL', sprofile=PubId},
-    modify_user(Event);
-
-
 processor(modify_group_vp, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
@@ -70,13 +68,13 @@ processor(modify_group_vp, Message) ->
     GrpId = em_utils:get_element_text(GroupId),
     UserName = PubId,
     
-    Event=#event{user=PubId, pass=randchar(14), pubid=PubId, phone=Phone, group=GrpId, ispsi='TRUE', irs='0', isdefault='FALSE', csprofile='IMT_VIRTUAL'},   
+    Event=#event{user=PubId, pubid=PubId, phone=Phone, group=GrpId},   
     case em_srd:user_exists(UserName) of
         false ->
-            add_user(Event),
-            modify_user(Event);
+            em_processor_service:create(type_is_virtual(Event)),
+            em_processor_service:modify(type_is_virtual(Event));
         true ->
-            modify_user(Event)
+            em_processor_service:modify(Event)
     end;
 
 processor(modify_user_vm, Message) ->
@@ -101,8 +99,8 @@ processor(create_user, Message) ->
     UserName = em_utils:get_element_text(U),
     GrpId = em_utils:get_element_text(G),
 
-    Event=#event{user=UserName, pass=randchar(14), pubid=UserName, group=GrpId, ispsi='FALSE', irs='1', isdefault='TRUE', csprofile='IMS_CENTREX'},
-    add_user(Event);
+    Event=#event{user=UserName, pubid=UserName, group=GrpId, sprofile=UserName},
+    em_processor_user:create(type_is_user(Event));
     
 
 processor(modify_user, Message) ->
@@ -141,50 +139,35 @@ processor(modify_user, Message) ->
    PublicId = em_utils:get_element_text(L),
    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
    
+   PubId_is_nil = em_utils:get_element_attributes('xsi:nil',L) =:= "true",
+   Phone_is_nil = em_utils:get_element_attributes('xsi:nil',P) =:= "true",
+   
+   Pub = nil_fix(PubId, PubId_is_nil),        
+   Pho = nil_fix(Phone, Phone_is_nil),
+   
    % In order to re-create the SIP Trunk user, we must first get the GrpId
    GrpId = em_srd:get_group(UserName),
-
+   
+   Event=#event{user = UserName, pubid = Pub, phone = Pho, group=GrpId },
    case TrunkLinePort of
        undefined ->
-           Event = #event{ 
-               user = UserName,
-               pubid = PubId,
-               phone = Phone,
-               csprofile='IMS_CENTREX',
-               ispsi='FALSE',
-               irs='1',
-               isdefault='TRUE'
-               },
-               modify_user(Event);
-                   
+           em_processor_user:modify(type_is_user(Event));
        TrunkLinePort ->
-               Event = #event{ 
-               user = UserName,
-               pubid = PubId,
-               phone = Phone, 
-               csprofile='BusinessTrunk_wild',
-               ispsi='TRUE',
-               irs='0',
-               isdefault='FALSE',
-               group=GrpId 
-               },
-               delete_user(UserName),
-               add_user(Event),
-               modify_user(Event)
+           em_processor_user:modify(type_is_trunk(Event))
    end;
-    
+
 
 processor(delete_virtual_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     UserName = em_utils:get_element_text(ServiceUserId),
-    delete_user(UserName);
-    
+    em_processor_service:delete(#event{user=UserName});
+
 processor(delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     UserName = em_utils:get_element_text(U),
-    delete_user(UserName);
+    em_processor_user:delete(UserName);
 
 processor(set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -205,8 +188,8 @@ processor(create_trunk, Message) ->
     SipPass = em_utils:get_element_text(SipPassWord),
     PubId = em_utils:get_element_text(LinePort),
     GrpId = em_utils:get_element_text(GroupId),
-    Event=#event{user=UserName, pass=SipPass, pubid=PubId, group=GrpId, ispsi='FALSE', irs='1', isdefault='TRUE', csprofile='BusinessTrunk'},
-    add_user(Event);
+    Event=#event{user=UserName, pass=SipPass, pubid=PubId, group=GrpId},
+    em_processor_user:create(type_is_pilot(Event));
 
 %processor("GroupTrunkGroupModifyInstanceRequest20sp1", Message, _Ctx) ->
 %    InsideCommand = em_utils:get_element_childs(Message),
@@ -234,131 +217,16 @@ processor(delete_group, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [G] = em_utils:get_elements(groupId, InsideCommand),
     GroupId = em_utils:get_element_text(G),
-
     Users = em_db:get_users(GroupId),
 
     lists:foreach(
         fun(I) ->
-            delete_user(I)
+            em_processor_user:delete(I)
         end, Users);
 
 
 processor(ignored, _Message) ->
     ok.
-
-add_user(Event) ->
-    State=#state{session=open_ema_session()},    
-    {ok, _} = em_srd:add_user(Event),
-    em_hss:create({subscriber, Event}, State),
-    close_ema_session(State).
-
-delete_user(UserName) ->
-    CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone = em_srd:get_e164(UserName),
-
-    State=#state{session=open_ema_session()},
-    
-        case CurrentPhone of
-            undefined ->
-               em_hss:delete({subscriber, UserName}, State),
-               {ok, _} = em_srd:delete_user(UserName);
-           
-            CurrentPhone ->
-                em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
-                em_hss:delete({subscriber, UserName}, State),
-                {ok, _} = em_srd:delete_user(UserName)
-        end,
-        
-    close_ema_session(State).    
-    
-
-
-modify_user(Event=#event{user=UserName}) ->
-    State=#state{session=open_ema_session()},
-
-    CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone = em_srd:get_e164(UserName),
-    
-    PlannedChange = plan_change(Event),
-    ?INFO_MSG("Executing plan: ~p", [PlannedChange]),
-    
-    case PlannedChange of
-        
-        {none, none} ->
-            ignore;
-        {none, delete} ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
-            em_hss:delete({teluri, UserName, CurrentPhone}, State),
-            em_srd:delete_e164(UserName),
-            ok;       
-        {none, update} ->
-            em_srd:set_e164(Event),
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
-            em_hss:delete({teluri, UserName, CurrentPhone}, State),
-            em_hss:create({teluri, Event}, State),
-            em_hss:create({enum, Event}, State),    
-            ok;
-        {none, create} ->
-            em_srd:set_e164(Event),
-            em_hss:create({teluri, Event}, State),
-            em_hss:create({enum, Event}, State),
-            ok;
-        {update, none} when CurrentPhone =/= undefined ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
-            em_hss:delete({teluri, UserName, CurrentPhone}, State),
-            em_hss:delete({pubid, UserName, CurrentPubId}, State),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, State),
-            em_srd:set_sipuri(Event), 
-            em_hss:create({serviceprofile, Event}, State),
-            em_hss:create({pubid, Event}, State),
-            em_hss:create({teluri, Event}, State),
-            em_hss:create({enum, Event}, State),
-            ok;
-        {update, none} ->
-            em_hss:delete({pubid, UserName, CurrentPubId}, State),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, State),
-            em_srd:set_sipuri(Event),
-            em_hss:create({serviceprofile, Event}, State),
-            em_hss:create({pubid, Event}, State),
-            ok;
-        {update, update} ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
-            em_hss:delete({teluri, UserName, CurrentPhone}, State),
-            em_hss:delete({pubid, UserName, CurrentPubId}, State),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, State),
-            em_srd:set_sipuri(Event),
-            em_srd:set_e164(Event),
-            em_hss:create({serviceprofile, Event}, State),
-            em_hss:create({pubid, Event}, State),
-            em_hss:create({teluri, Event}, State),
-            em_hss:create({enum, Event}, State),
-            ok;
-        {update, create} ->
-            em_hss:delete({pubid, UserName, CurrentPubId}, State),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, State),
-            em_srd:set_e164(Event),
-            em_srd:set_sipuri(Event),
-            em_hss:create({serviceprofile, Event}, State),
-            em_hss:create({pubid, Event}, State),
-            em_hss:create({teluri, Event}, State),
-            em_hss:create({enum, Event}, State),
-            ok;
-        {update, delete} ->
-            em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
-            em_hss:delete({teluri, UserName, CurrentPhone}, State),
-            em_srd:delete_e164(UserName),
-            em_hss:delete({pubid, UserName, CurrentPubId}, State),
-            em_hss:delete({serviceprofile, UserName, CurrentPubId}, State),
-            em_srd:set_sipuri(Event),
-            em_hss:create({serviceprofile, Event}, State),
-            em_hss:create({pubid, Event}, State),
-            ok;
-        {ActionPubId, ActionPhone} ->
-            ?ERROR_MSG("Unknown planned change: ~p", [{ActionPubId, ActionPhone}])
-            
-    end,
-    close_ema_session(State).
-    
     
 set_user_password(UserName, Pass) ->
     State=#state{session=open_ema_session()},
@@ -366,25 +234,47 @@ set_user_password(UserName, Pass) ->
     em_srd:set_pass(UserName, Pass),
      close_ema_session(State).
     
-    
-% This planning of steps is creted in order to limit he numbers of entries in the case statement
-plan_change(#event{user=UserName, pubid=PubId, phone=Phone}) ->
-    CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone = em_srd:get_e164(UserName),  
-    PubIdAction = plan_change(CurrentPubId, PubId),
-    PhoneAction = plan_change(CurrentPhone, Phone),
-    {PubIdAction, PhoneAction}.
-    
-plan_change(undefined, undefined) ->
-    none;
-plan_change(undefined, _X) ->
-    create;
-plan_change(_X, _X) ->
-    none;
-plan_change(_X, undefined) ->
-    delete;
-plan_change(_X, _Y) ->
-    update.
+
+
+type_is_virtual(Event) ->
+    Event#event{type='virtual',
+                  csprofile='IMT_VIRTUAL',
+                  ispsi='TRUE',
+                  isdefault='FALSE',
+                  irs='0',
+                  pass=randchar(14)}.
+
+type_is_trunk(Event) ->
+    Event#event{type='trunk',
+                  csprofile='BusinessTrunk_wild',
+                  ispsi='TRUE',
+                  isdefault='FALSE',
+                  irs='0',
+                  pass=randchar(14)}.
+
+type_is_user(Event) ->
+    Event#event{type='user',
+                  csprofile='IMS_CENTREX',
+                  ispsi='FALSE',
+                  isdefault='TRUE',
+                  irs='1',
+                  pass=randchar(14)}.      
+
+type_is_pilot(Event) ->
+    Event#event{type='pilot',
+                  csprofile='BusinessTrunk',
+                  ispsi='FALSE',
+                  isdefault='TRUE',
+                  irs='1'}.  
+
+
+nil_fix(undefined, false) ->
+    undefined;
+nil_fix(undefined, true) ->
+    nil;
+nil_fix(X, _) ->
+    X.
+
 
 
 open_ema_session() ->

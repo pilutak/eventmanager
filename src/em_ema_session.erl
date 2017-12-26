@@ -12,18 +12,23 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(em).
- 
-%% API
--export([close_connection/1]).
+-module(em_ema_session).
 
+-export([open/0, close/1]).
+-include("../include/em.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+open() ->
+    {ok, Session} = em_hss:login(?EMA_USER, ?EMA_PASS),
+    ?INFO_MSG("EMA session created: ~p", [Session]),
+    Session.
+    
+close(#state{session=Session}) ->
+    em_hss:logout(Session),
+    ?INFO_MSG("EMA session closed: ~p", [Session]).    
 
-close_connection(Host) ->
-    Pid = whereis(list_to_atom(Host)),
-    supervisor:terminate_child(em_reader_sup, Pid),
-    supervisor:delete_child(em_reader_sup, Pid).
-  
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
