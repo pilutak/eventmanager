@@ -50,7 +50,7 @@ processor(modify_service, Message) ->
     Phone_is_nil = em_utils:get_element_attributes('xsi:nil',PhoneNumber) =:= "true",
     Pub = nil_fix(PublicId, PubId_is_nil), 
     Pho = nil_fix(Phone, Phone_is_nil),        
-    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub},
+    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub, current_pubid=em_srd:get_sipuri(UserName), current_phone=em_srd:get_e164(UserName)},
     em_processor_service:modify(type_is_virtual(Event));
     
 processor(modify_group_vp, Message) ->
@@ -136,12 +136,21 @@ processor(modify_user, Message) ->
     Pub = nil_fix(PubId, PubId_is_nil),        
     Pho = nil_fix(Phone, Phone_is_nil),
    
-    Event=#event{user = UserName, pubid = Pub, phone = Pho, group=em_srd:get_group(UserName), sprofile=Pub},
+    Event=#event{
+                user = UserName, 
+                pubid = Pub, 
+                phone = Pho, 
+                group=em_srd:get_group(UserName), 
+                sprofile=Pub, 
+                current_pubid=em_srd:get_sipuri(UserName), 
+                current_phone=em_srd:get_e164(UserName)
+                },
+                
     case TrunkLinePort of
         undefined ->
             em_processor_user:modify(type_is_user(Event));
         TrunkLinePort ->
-            em_processor_user:modify(type_is_trunk(Event))
+            em_processor_trunk:modify(type_is_trunk(Event))
     end;
 
 
@@ -177,7 +186,7 @@ processor(create_trunk, Message) ->
     PubId = em_utils:get_element_text(LinePort),
     GrpId = em_utils:get_element_text(GroupId),
     Event=#event{user=UserName, pass=SipPass, pubid=PubId, group=GrpId},
-    em_processor_user:create(type_is_pilot(Event));
+    em_processor_trunk:create(type_is_pilot(Event));
 
 %processor("GroupTrunkGroupModifyInstanceRequest20sp1", Message, _Ctx) ->
 %    InsideCommand = em_utils:get_element_childs(Message),
