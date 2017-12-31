@@ -28,10 +28,11 @@
     get_sipuri/1,
     get_group/1,
     user_exists/1,
+    get_type/1,
     set_pass/2
     ]).
 
--record(em_srd, {user, pass, pubid, phone, group, vmuser, vmpass}).
+-record(em_srd, {user, pass, pubid, phone, group, vmuser, vmpass, type}).
 
 %%%===================================================================
 %%% API
@@ -54,8 +55,8 @@ create_tables() ->
         {attributes, record_info(fields, em_srd)}]),
         ok.
 
-add_user(#event{user=UserName, group=Group, pubid=PubId}) ->
-    User=#em_srd{user=UserName, pubid=PubId, group=Group},
+add_user(#event{user=UserName, group=Group, pubid=PubId, type=Type}) ->
+    User=#em_srd{user=UserName, pubid=PubId, group=Group, type=Type},
     
     F = fun () ->
         case mnesia:read({em_srd, UserName}) =:= [] of
@@ -167,6 +168,17 @@ user_exists(UserId) ->
         end
     end,
     mnesia:activity(transaction, F).
+    
+
+get_type(UserName) ->
+    F = fun() ->
+        case mnesia:read({em_srd, UserName}) of 
+            [#em_srd{type=S}] -> S;
+            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
+        end
+    end,
+    mnesia:activity(transaction, F).
+    
     
 
 

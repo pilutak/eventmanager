@@ -239,21 +239,23 @@ type_is_virtual(Event) ->
                   irs='0',
                   pass=randchar(14)}.
 
-type_is_trunk(Event) ->
+type_is_trunk(Event=#event{user=UserName}) ->
     Event#event{type='trunk',
                   csprofile='BusinessTrunk_wild',
                   ispsi='TRUE',
                   isdefault='FALSE',
                   irs='0',
-                  pass=randchar(14)}.
+                  pass=randchar(14),
+                  current_type=em_srd:get_type(UserName)}.
 
-type_is_user(Event) ->
+type_is_user(Event=#event{user=UserName}) ->
     Event#event{type='user',
                   csprofile='IMS_CENTREX',
                   ispsi='FALSE',
                   isdefault='TRUE',
                   irs='1',
-                  pass=randchar(14)}.      
+                  pass=randchar(14),
+                  current_type=em_srd:get_type(UserName)}.      
 
 type_is_pilot(Event) ->
     Event#event{type='pilot',
@@ -296,8 +298,7 @@ randchar(N, Acc) ->
 fix_undefined(UserName, undefined) ->
     UserName;
 fix_undefined(_UserName, PubId) ->
-    PubId.
-        
+    PubId.        
 
 processors() ->
     #{  

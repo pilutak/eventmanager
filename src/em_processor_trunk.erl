@@ -50,12 +50,113 @@ delete(#event{user=UserName}) ->
 
 
     
-modify(#event{user=X1, pubid=X2, phone=X3, current_pubid=X4, current_phone=X5}) ->
-    ?INFO_MSG("User: ~p", [X1]),
-    ?INFO_MSG("PubId: ~p", [X2]),
-    ?INFO_MSG("Phone: ~p", [X3]),
-    ?INFO_MSG("CurrentPubId: ~p", [X4]),
-    ?INFO_MSG("CurrentPhone: ~p", [X5]).     
+modify(Event=#event{current_type=user}) ->
+    ?INFO_MSG("Changing user type to trunk: ~n", []),
+    delete(Event),
+    create(Event),
+    %TODO: We must also re-create phone before performing modify
+    modify(Event#event{current_type=trunk});
+    
+modify(#event{user=X1, pubid=X1, phone=nil, current_pubid=X1, current_phone=undefined}) ->
+    ?INFO_MSG("Ignoring ~n", []);
+    
+modify(#event{user=Z1, pubid=Z1, phone=nil, current_pubid=Z1, current_phone=undefined}) ->
+    ?INFO_MSG("Ignoring, all default)~n", []);
+
+modify(#event{user=_Z1, pubid=X1, phone=nil, current_pubid=X1, current_phone=undefined}) ->
+    ?INFO_MSG("Ignoring no change to pubid, no phone()~n", []);  
+
+modify(#event{user=Z1, pubid=Z1, phone=undefined, current_pubid=Z1, current_phone=undefined}) ->
+    ?INFO_MSG("Ignoring))~n", []);
+
+modify(#event{user=Z1, pubid=Z1, phone=X1, current_pubid=Z1, current_phone=X1}) ->
+    ?INFO_MSG("Ignoring no change to phone()~n", []);  
+
+modify(#event{user=Z1, pubid=X1, current_pubid=X1, phone=nil, current_phone=X2}) ->
+    ?INFO_MSG("Delete phone (no pubid change))~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({enum, X2, X1}, State),
+    em_hss:delete({teluri, Z1, X2}, State),
+    em_srd:delete_e164(Z1),
+    em_ema_session:close(State);  
+    
+modify(Event=#event{user=Z1, pubid=_X1, current_pubid=X2, phone=nil, current_phone=undefined}) ->
+    ?INFO_MSG("Update pubId )~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({pubid, Z1, X2}, State),
+    em_hss:delete({serviceprofile, Z1, X2}, State),
+    em_srd:set_sipuri(Event),
+    em_hss:create({serviceprofile, Event}, State),
+    em_hss:create({pubid, Event}, State),
+    em_ema_session:close(State);  
+       
+modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phone=undefined}) ->
+    ?INFO_MSG("Create phone on default pubid (no change to PubID))~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_srd:set_e164(Event),
+    em_hss:create({teluri, Event}, State),
+    em_hss:create({enum, Event}, State),
+    em_ema_session:close(State); 
+
+modify(#event{user=Z1, pubid=Z1, phone=nil, current_pubid=Z1, current_phone=X2}) ->
+    ?INFO_MSG("Delete phone on default pubid (no change to PubID))~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({enum, X2, Z1}, State),
+    em_hss:delete({teluri, Z1, X2}, State),
+    em_srd:delete_e164(Z1),
+    em_ema_session:close(State);  
+
+modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phone=X2}) ->
+    ?INFO_MSG("Update phone on default pubid (no change to PubID))~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({enum, X2, Z1}, State),
+    em_hss:delete({teluri, Z1, X2}, State),
+    em_srd:set_e164(Event),
+    em_hss:create({teluri, Event}, State),
+    em_hss:create({enum, Event}, State),
+    em_ema_session:close(State);  
+    
+modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_phone=undefined}) ->
+    ?INFO_MSG("Create phone on new pubId ~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({pubid, Z1, X2}, State),
+    em_hss:delete({serviceprofile, Z1, X2}, State),
+    em_srd:set_sipuri(Event),
+    em_srd:set_e164(Event),
+    em_hss:create({serviceprofile, Event}, State),
+    em_hss:create({pubid, Event}, State),
+    em_hss:create({teluri, Event}, State),
+    em_hss:create({enum, Event}, State),
+    em_ema_session:close(State);     
 
 
+modify(Event=#event{user=Z1, pubid=_X1, phone=nil, current_pubid=X2, current_phone=X3}) ->
+    ?INFO_MSG("Delete phone on new pubId ~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({enum, X3, X2}, State),
+    em_hss:delete({teluri, Z1, X3}, State),
+    em_hss:delete({pubid, Z1, X2}, State),
+    em_hss:delete({serviceprofile, Z1, X2}, State),
+    em_srd:set_sipuri(Event),
+    em_srd:delete_e164(Z1),
+    em_hss:create({serviceprofile, Event}, State),
+    em_hss:create({pubid, Event}, State),
+    em_ema_session:close(State);
+
+
+modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_phone=X3}) ->
+    ?INFO_MSG("Update phone on new pubId ~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({enum, X3, X2}, State),
+    em_hss:delete({teluri, Z1, X3}, State),
+    em_hss:delete({pubid, Z1, X2}, State),
+    em_hss:delete({serviceprofile, Z1, X2}, State),
+    em_srd:set_sipuri(Event),
+    em_srd:set_e164(Event),
+    em_hss:create({serviceprofile, Event}, State),
+    em_hss:create({pubid, Event}, State),
+    em_hss:create({teluri, Event}, State),
+    em_hss:create({enum, Event}, State),
+    em_ema_session:close(State).
+    
 

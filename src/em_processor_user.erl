@@ -48,7 +48,12 @@ delete(#event{user=UserName}) ->
         end,
     em_ema_session:close(State). 
 
-
+modify(Event=#event{current_type=trunk}) ->
+    ?INFO_MSG("Changing user type from trunk to user: ~n", []),
+    delete(Event),
+    create(Event),
+    modify(Event#event{current_type=user});
+    
 modify(#event{user=X1, pubid=X1, phone=nil, current_pubid=X1, current_phone=undefined}) ->
     ?INFO_MSG("Ignoring ~n", []);
     
