@@ -138,7 +138,7 @@ await_result(Pid) ->
             ok;
         {'EXIT', Pid, _ } -> 
             ok
-    after 3000 ->
+    after 6000 ->
             ?ERROR_MSG("Event process timeout: ~p", [Pid]),
             timeout
     end.
