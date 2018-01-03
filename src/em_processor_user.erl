@@ -14,7 +14,7 @@
 
 -module(em_processor_user).
 
--export([create/1, delete/1, modify/1]).
+-export([create/1, delete/1, modify/1, set_password/2]).
 -include("../include/em.hrl").
 
 %%%===================================================================
@@ -155,7 +155,14 @@ modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_pho
     em_hss:create({teluri, Event}, State),
     em_hss:create({enum, Event}, State),
     em_ema_session:close(State).
-    
+
+set_password(UserName, Pass) ->
+    State=#state{session=em_ema_session:open()},
+    em_hss:update({pass, UserName, Pass}, State),
+    em_srd:set_pass(UserName, Pass),
+    em_ema_session:close(State).
+
+
 %modify(#event{user=X1, pubid=X2, phone=X3, current_pubid=X4, current_phone=X5}) ->
 %    ?INFO_MSG("User: ~p", [X1]),
 %    ?INFO_MSG("PubId: ~p", [X2]),

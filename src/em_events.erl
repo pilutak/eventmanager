@@ -173,8 +173,8 @@ processor(set_password, Message) ->
     [P] = em_utils:get_elements(newPassword, InsideCommand),
     UserName = em_utils:get_element_text(U),
     Pass = em_utils:get_element_text(P),
-    set_user_password(UserName, Pass);
-
+    em_processor_user:set_password(UserName, Pass);
+    
 processor(create_trunk, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
@@ -225,13 +225,9 @@ processor(delete_group, Message) ->
 
 processor(ignored, _Message) ->
     ok.
-    
-set_user_password(UserName, Pass) ->
-    State=#state{session=open_ema_session()},
-    em_hss:update({pass, UserName, Pass}, State),
-    em_srd:set_pass(UserName, Pass),
-    close_ema_session(State).
 
+
+%% We are updating information in the Event record based on the event type
 type_is_virtual(Event) ->
     Event#event{type='virtual',
                   csprofile='IMT_VIRTUAL',
@@ -273,16 +269,6 @@ nil_fix(X, _) ->
     X.
 
 
-open_ema_session() ->
-    {ok, Session} = em_hss:login(?EMA_USER, ?EMA_PASS),
-    ?INFO_MSG("EMA session created: ~p", [Session]),
-    Session.
-    
-close_ema_session(#state{session=Session}) ->
-    em_hss:logout(Session),
-    ?INFO_MSG("EMA session closed: ~p", [Session]).    
-    
-
 % We use this to create a temporarily SIP password. The password is later
 % overwritten by an seperate event (not for virtual users, the password remains).
 randchar(N) ->
@@ -301,6 +287,7 @@ fix_undefined(UserName, undefined) ->
 fix_undefined(_UserName, PubId) ->
     PubId.        
 
+%% mapping various OCI-R events to functions
 processors() ->
     #{  
         "GroupAutoAttendantAddInstanceRequest20" => create_service,
@@ -325,6 +312,8 @@ processors() ->
         "GroupDeleteRequest" => delete_group
     }.
 
+%% The OCI-R event contains the city name, here we translate
+%% to the phonecontext used in the HSS
 phonecontexts() ->
     #{
         "Nuuk" => 'nuk.tg.gl',
