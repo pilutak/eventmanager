@@ -70,7 +70,7 @@ processor(modify_group_vp, Message) ->
             em_processor_service:create(type_is_virtual(Event)),
             em_processor_service:modify(type_is_virtual(Event));
         true ->
-            em_processor_service:modify(Event)
+            em_processor_service:modify(type_is_virtual(Event))
     end;
 
 processor(modify_user_vm, Message) ->
