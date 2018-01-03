@@ -110,6 +110,7 @@ processor(modify_user, Message) ->
     City = em_utils:get_element_text(SP),
     PhoneContext = maps:get(City, phonecontexts(), undefined),
     
+    %%TODO We must send phonecontext modify command
     case PhoneContext of
         undefined ->
             ok;
