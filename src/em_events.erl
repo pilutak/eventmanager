@@ -49,8 +49,12 @@ processor(modify_service, Message) ->
     PubId_is_nil = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =:= "true",
     Phone_is_nil = em_utils:get_element_attributes('xsi:nil',PhoneNumber) =:= "true",
     Pub = nil_fix(PublicId, PubId_is_nil), 
-    Pho = nil_fix(Phone, Phone_is_nil),        
-    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub, current_pubid=em_srd:get_sipuri(UserName), current_phone=em_srd:get_e164(UserName)},
+    Pho = nil_fix(Phone, Phone_is_nil),
+    
+    CurrentPubId = em_srd:get_sipuri(UserName),
+    CurrentPhone= em_srd:get_e164(UserName),
+            
+    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub, current_pubid=CurrentPubId, current_phone=CurrentPhone},
     em_processor_service:modify(type_is_virtual(Event));
     
 processor(modify_group_vp, Message) ->
@@ -109,16 +113,7 @@ processor(modify_user, Message) ->
     [SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
     City = em_utils:get_element_text(SP),
     PhoneContext = maps:get(City, phonecontexts(), undefined),
-    
-    %%TODO We must send phonecontext modify command
-    case PhoneContext of
-        undefined ->
-            ok;
-        PhoneContext ->
-            io:format("PhoneContext is: ~p~n",[PhoneContext])
-    end,
-    
-    
+        
     % Fecth endpoint Trunk data
     [F] = em_utils:get_elements(endpoint, InsideCommand),
     [T] = em_utils:get_elements(trunkAddressing, em_utils:get_element_childs(F)),
@@ -130,6 +125,16 @@ processor(modify_user, Message) ->
     Phone = em_utils:get_element_text(P),
     PublicId = em_utils:get_element_text(L),
     PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+
+
+    %%TODO We must send phonecontext modify command
+    case PhoneContext of
+        undefined ->
+            em_processor_user:set_phonecontext(UserName, "tg.gl");
+        PhoneContext ->
+            io:format("Setting phonecontext: ~p~n",[PhoneContext]),
+            em_processor_user:set_phonecontext(UserName, PhoneContext)
+    end,
    
     PubId_is_nil = em_utils:get_element_attributes('xsi:nil',L) =:= "true",
     Phone_is_nil = em_utils:get_element_attributes('xsi:nil',P) =:= "true",
