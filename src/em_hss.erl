@@ -61,8 +61,11 @@ delete({teluri, User, Phone}, #state{session = Session}) ->
     {ok, _} = send(em_interface_cai3g_envelopes:delete_teluri(Session, User, Phone)).
     
 update({pass, User, Pass}, #state{session = Session}) ->
-    {ok, _} = send(em_interface_cai3g_envelopes:set_pass(Session, User, Pass)).
+    {ok, _} = send(em_interface_cai3g_envelopes:set_pass(Session, User, Pass));
 
+update({phonecontext, User, PhoneContext}, #state{session = Session}) ->
+    {ok, _} = send(em_interface_cai3g_envelopes:set_phonecontext(Session, User, PhoneContext)).
+        
 login(User, Pass) ->
     {ok, _} = em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:login(User, Pass))).
 
