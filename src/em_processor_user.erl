@@ -14,7 +14,7 @@
 
 -module(em_processor_user).
 
--export([create/1, delete/1, modify/1, set_password/2]).
+-export([create/1, delete/1, modify/1, set_password/2, set_phonecontext/2]).
 -include("../include/em.hrl").
 
 %%%===================================================================
@@ -162,6 +162,10 @@ set_password(UserName, Pass) ->
     em_srd:set_pass(UserName, Pass),
     em_ema_session:close(State).
 
+set_phonecontext(UserName, PhoneContext) ->
+    State=#state{session=em_ema_session:open()},
+    em_hss:update({phonecontext, UserName, PhoneContext}, State),
+    em_ema_session:close(State).
 
 %modify(#event{user=X1, pubid=X2, phone=X3, current_pubid=X4, current_phone=X5}) ->
 %    ?INFO_MSG("User: ~p", [X1]),

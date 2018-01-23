@@ -28,7 +28,8 @@
     delete_serviceprofile/3,
     add_enum/2,
     delete_enum/3,
-    set_pass/3
+    set_pass/3,
+    set_phonecontext/3
     ]).
     
 %%%===================================================================
@@ -350,6 +351,30 @@ set_pass(Session, User, Pass) ->
             </cai3:Set>
         </soapenv:Body>
     </soapenv:Envelope>",[Session, User, User, User, Pass]).
+
+
+set_phonecontext(Session, User, PhoneContext) ->
+    io_lib:format(
+    "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
+        <soapenv:Header>
+            <cai3:SessionId>~s</cai3:SessionId>
+        </soapenv:Header>
+        <soapenv:Body>
+            <cai3:Set>
+                <cai3:MOType>ISMSubscription@http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/</cai3:MOType>
+                <cai3:MOId>
+                    <subscriberId>~s</subscriberId>
+                </cai3:MOId>
+                <cai3:MOAttributes>
+                    <SetISMSubscription xmlns=\"http://schemas.ericsson.com/ema/UserProvisioning/HSS/ISM/\" subscriberId=\"~s\">
+                        <subscriberServiceProfile serviceProfileId=\"~s\">
+                        <phoneContext>~s</phoneContext>
+                        </subscriberServiceProfile>
+                    </SetISMSubscription>
+                </cai3:MOAttributes>
+            </cai3:Set>
+        </soapenv:Body>
+    </soapenv:Envelope>",[Session, User, User, User, PhoneContext]).
 
 %%%===================================================================
 %%% Internal functions
