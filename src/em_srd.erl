@@ -29,7 +29,8 @@
     get_group/1,
     user_exists/1,
     get_type/1,
-    set_pass/2
+    set_pass/2,
+    get_user/1
     ]).
 
 -record(em_srd, {user, pass, pubid, phone, group, vmuser, vmpass, type}).
@@ -55,11 +56,16 @@ create_tables() ->
         {attributes, record_info(fields, em_srd)}]),
         ok.
 
-add_user(#event{user=UserName, group=Group, pubid=PubId, type=Type}) ->
-    User=#em_srd{user=UserName, pubid=PubId, group=Group, type=Type},
+add_user(#event{user=U, group=G, pubid=P, type=T}) ->
+        
+    User=#em_srd{user=U, 
+                pubid=P, 
+                group=G, 
+                type=T,
+                phone=undefined},
     
     F = fun () ->
-        case mnesia:read({em_srd, UserName}) =:= [] of
+        case mnesia:read({em_srd, U}) =:= [] of
             true -> mnesia:write(User);
             false -> {error, {activation_error, data_error, 'The user must not already exist in the SRD'}}
         end
@@ -78,13 +84,13 @@ delete_user(UserName) ->
     mnesia:activity(transaction, F),
     {ok, success}.
 
-set_e164(#event{user=UserName, phone=Phone})->
+set_e164(#event{user=U, phone=P})->
     F = fun () ->
-        case mnesia:read({em_srd, UserName}) =:= [] of
+        case mnesia:read({em_srd, U}) =:= [] of
             true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
             false ->
-                [R] = mnesia:wread({em_srd, UserName}),
-                mnesia:write(R#em_srd{phone = Phone})
+                [R] = mnesia:wread({em_srd, U}),
+                mnesia:write(R#em_srd{phone = P})
         end
     end,
     mnesia:activity(transaction, F).
@@ -118,13 +124,13 @@ get_sipuri(UserId) ->
     end,
     mnesia:activity(transaction, F).
 
-set_sipuri(#event{user=UserName, pubid=PubId})->
+set_sipuri(#event{user=U, pubid=P})->
     F = fun () ->
-        case mnesia:read({em_srd, UserName}) =:= [] of
+        case mnesia:read({em_srd, U}) =:= [] of
             true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
             false ->
-                [R] = mnesia:wread({em_srd, UserName}),
-                mnesia:write(R#em_srd{pubid = PubId})
+                [R] = mnesia:wread({em_srd, U}),
+                mnesia:write(R#em_srd{pubid = P})
         end
     end,
     mnesia:activity(transaction, F).
@@ -179,8 +185,6 @@ get_type(UserName) ->
     end,
     mnesia:activity(transaction, F).
     
-    
-
 
 get_users(GrpId) ->
     F = fun() ->
@@ -189,6 +193,12 @@ get_users(GrpId) ->
         mnesia:select(em_srd, [{User, [], [Result]}])
     end,
     mnesia:activity(transaction, F).
+    
+get_user(UserName) ->
+    F = fun() ->
+        mnesia:match_object(#em_srd{user = UserName, _ = '_'})
+    end,
+    mnesia:activity(transaction, F). 
     
 %%%===================================================================
 %%% Internal functions
