@@ -14,6 +14,7 @@
 
 -record(event, {user, pass, pubid, phone, group, csprofile, ispsi, irs, isdefault, sprofile, type, current_pubid, current_phone, current_type}).
 -record(state, { session }).
+-record(vmevent, {user, mailuser, mailpass, current_mailuser, current_mailpass}).
 
 -define(ERROR_MSG(Format, Args),
 	error_logger:error_msg("(~p:~p:~p) " ++ Format,
@@ -31,12 +32,30 @@
 
 -define(EMA_USER,
   case application:get_env(em, ema) of
-    undefined -> "sogadm";
+    undefined -> "user";
     {ok,{_URL, User, _Pass}} -> User
   end).
 
 -define(EMA_PASS,
   case application:get_env(em, ema) of
-    undefined -> "sogadm";
+    undefined -> "password";
+    {ok,{_URL, _User, Pass}} -> Pass
+  end).
+  
+-define(VMAIL_URL,
+  case application:get_env(em, vmail) of
+    undefined -> "http://localhost:7026";
+    {ok,{URL, _User, _Pass}} -> URL
+  end).
+
+-define(VMAIL_USER,
+  case application:get_env(em, vmail) of
+    undefined -> "user";
+    {ok,{_URL, User, _Pass}} -> User
+  end).
+
+-define(VMAIL_PASS,
+  case application:get_env(em, vmail) of
+    undefined -> "password";
     {ok,{_URL, _User, Pass}} -> Pass
   end).
