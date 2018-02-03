@@ -132,11 +132,14 @@ parser_message(_,_)->
     
 await_result(Pid) ->
     receive
-        {'EXIT', Pid, normal} -> 
+        {'EXIT', Pid, normal} ->
+            ?ERROR_MSG("EXIT normal: ~p", [Pid]), 
             ok;
         {'EXIT', Pid, shutdown} -> 
+            ?ERROR_MSG("EXIT shutdown: ~p", [Pid]),
             ok;
         {'EXIT', Pid, _ } -> 
+            ?ERROR_MSG("EXIT other: ~p", [Pid]),
             ok
     after 8000 ->
             ?ERROR_MSG("Event process timeout: ~p", [Pid]),
