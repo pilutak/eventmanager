@@ -96,6 +96,7 @@ add_subscriber(Session, #event{user=User, ispsi=IsPsi, pass=Pass, pubid=PubId, i
                                 <configuredServiceProfileId>~s</configuredServiceProfileId>
                             </configuredServiceProfile>
                             <maxNumberSessions>99</maxNumberSessions>
+                            <phoneContext>tg.gl</phoneContext>
                         </subscriberServiceProfile>
                     </CreateISMSubscription>
                 </cai3:MOAttributes>
