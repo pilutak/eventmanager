@@ -23,6 +23,7 @@
 %%%===================================================================
 process(CommandType, Message) ->
     Processor = maps:get(CommandType, processors(), ignored),
+    ?INFO_MSG("selecting processor: ~p", [Processor]), 
     processor(Processor, Message).
 
 %%%===================================================================
@@ -51,10 +52,10 @@ processor(modify_service, Message) ->
     Pub = nil_fix(PublicId, PubId_is_nil), 
     Pho = nil_fix(Phone, Phone_is_nil),
     
-    CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone= em_srd:get_e164(UserName),
-            
-    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub, current_pubid=CurrentPubId, current_phone=CurrentPhone},
+    [{CurrentPubId}] = em_srd:get_sipuri(UserName),
+    [{CurrentPhone}] = em_srd:get_e164(UserName),
+    
+    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub, current_pubid=binary_to_list(CurrentPubId), current_phone=binary_to_list(CurrentPhone)},
     em_processor_service:modify(type_is_virtual(Event));
     
 processor(modify_group_vp, Message) ->
@@ -67,24 +68,48 @@ processor(modify_group_vp, Message) ->
     PubId = em_utils:get_element_text(Pub),
     GrpId = em_utils:get_element_text(GroupId),
     UserName = PubId,
+    
     Event=#event{user=PubId, pubid=PubId, phone=Phone, group=GrpId},  
     
     case em_srd:user_exists(UserName) of
         false ->
             em_processor_service:create(type_is_virtual(Event)),
-            em_processor_service:modify(type_is_virtual(Event));
+            
+            Event1 = Event#event{current_pubid=PubId, current_phone="NODATA"},
+            em_processor_service:modify(type_is_virtual(Event1));
         true ->
-            em_processor_service:modify(type_is_virtual(Event))
+            [{CurrentPubId}] = em_srd:get_sipuri(UserName),
+            [{CurrentPhone}] = em_srd:get_e164(UserName),
+            
+            Event2 = Event#event{current_pubid=binary_to_list(CurrentPubId), current_phone=binary_to_list(CurrentPhone)},
+            em_processor_service:modify(type_is_virtual(Event2))
     end;
 
 processor(modify_user_vm, Message) ->
+    ?INFO_MSG("Start processing vmail: ~n", []), 
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [G] = em_utils:get_elements(groupMailServerUserId, InsideCommand),
     [P] = em_utils:get_elements(groupMailServerPassword, InsideCommand),
-    _UserName = em_utils:get_element_text(U),
-    _MailUser = em_utils:get_element_text(G),
-    _MailPass = em_utils:get_element_text(P);
+    UserName = em_utils:get_element_text(U),
+    MailUser = em_utils:get_element_text(G),
+    MailPass = em_utils:get_element_text(P),
+    ?INFO_MSG("Processing vmail, LOADING EVENT: ~n", []), 
+    
+    [{CurrentMailUser}] = m_srd2:get_vmail_user(UserName),
+    [{CurrentMailPass}] = em_srd:get_vmail_pass(UserName),
+    
+    CurrentMailUser1 = binary_to_list(CurrentMailUser),
+    CurrentMailPass1 = binary_to_list(CurrentMailPass),
+    
+    VMEvent=#vmevent{user=UserName, 
+                    mailuser=MailUser, 
+                    mailpass=MailPass, 
+                    current_mailuser=CurrentMailUser1, 
+                    current_mailpass=CurrentMailPass1},
+                    
+    ?INFO_MSG("Processing vmail: ~n", []), 
+    em_processor_vmail:modify(VMEvent);
         
     %TODO Create data in surgemail
 
@@ -130,10 +155,13 @@ processor(modify_user, Message) ->
     %%TODO We must send phonecontext modify command
     case PhoneContext of
         undefined ->
-            em_processor_user:set_phonecontext(UserName, "tg.gl");
+            ignore; 
+            %CurrentPhoneContext = em_srd:get_phonecontext(UserName),
+            %em_processor_user:set_phonecontext(UserName, PhoneContext, CurrentPhoneContext);
         PhoneContext ->
-            io:format("Setting phonecontext: ~p~n",[PhoneContext]),
-            em_processor_user:set_phonecontext(UserName, PhoneContext)
+            [{CurrentPhoneContext}] = em_srd:get_phonecontext(UserName),
+            CurrentPhoneContext1 = binary_to_list(CurrentPhoneContext),
+            em_processor_user:set_phonecontext(UserName, PhoneContext, CurrentPhoneContext1)
     end,
    
     PubId_is_nil = em_utils:get_element_attributes('xsi:nil',L) =:= "true",
@@ -142,14 +170,17 @@ processor(modify_user, Message) ->
     Pub = nil_fix(PubId, PubId_is_nil),        
     Pho = nil_fix(Phone, Phone_is_nil),
    
+   [{CurrentPubId}] = em_srd:get_sipuri(UserName),
+   [{CurrentPhone}] = em_srd:get_e164(UserName),
+   
     Event=#event{
                 user = UserName, 
                 pubid = Pub, 
                 phone = Pho, 
                 group=em_srd:get_group(UserName), 
                 sprofile=Pub, 
-                current_pubid=em_srd:get_sipuri(UserName), 
-                current_phone=em_srd:get_e164(UserName)
+                current_pubid=binary_to_list(CurrentPubId), 
+                current_phone=binary_to_list(CurrentPhone)
                 },
                 
     case TrunkLinePort of
@@ -220,12 +251,26 @@ processor(delete_group, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [G] = em_utils:get_elements(groupId, InsideCommand),
     GroupId = em_utils:get_element_text(G),
-    Users = em_db:get_users(GroupId),
+    Users = em_srd:get_users(GroupId),
 
     lists:foreach(
         fun(I) ->
-            em_processor_user:delete(I)
+            {I1} = I,
+            I2 = binary_to_list(I1),
+            em_processor_user:delete(#event{user=I2})
         end, Users);
+
+processor(create_domain, Message) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [D] = em_utils:get_elements(domain, InsideCommand),
+    Domain = em_utils:get_element_text(D),
+    em_processor_vmail:create_domain(Domain);
+
+processor(delete_domain, Message) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [D] = em_utils:get_elements(domain, InsideCommand),
+    Domain = em_utils:get_element_text(D),
+    em_processor_vmail:delete_domain(Domain);
 
 
 processor(ignored, _Message) ->
@@ -302,7 +347,7 @@ processors() ->
         "GroupHuntGroupModifyInstanceRequest" => modify_service,
         "GroupHuntGroupDeleteInstanceRequest" => delete_service,
         "GroupCallCenterAddInstanceRequest19" => create_service,
-        "GroupCallCenterModifyInstanceRequest" => modify_service,
+        "GroupCallCenterModifyInstanceRequest19" => modify_service,
         "GroupCallCenterDeleteInstanceRequest" => delete_service,
         "GroupMeetMeConferencingAddInstanceRequest19" => create_service,
         "GroupMeetMeConferencingModifyInstanceRequest" => modify_service,
@@ -314,31 +359,33 @@ processors() ->
         "GroupTrunkGroupAddInstanceRequest21" => create_trunk,
         "GroupVoiceMessagingGroupModifyVoicePortalRequest" => modify_group_vp,
         "UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest" => modify_user_vm,
-        "GroupDeleteRequest" => delete_group
+        "GroupDeleteRequest" => delete_group,
+        "SystemDomainAddRequest" => create_domain,
+        "SystemDomainDeleteRequest" => delete_domain
     }.
 
 %% The OCI-R event contains the city name, here we translate
 %% to the phonecontext used in the HSS
 phonecontexts() ->
     #{
-        "Nuuk" => 'nuk.tg.gl',
-        "Nanortalik" => 'nan.tg.gl',
-        "Narsaq" => 'nar.tg.gl',
-        "Qaqortoq" => 'qaq.tg.gl',
-        "Qassiarsuk" => 'qsk.tg.gl',
-        "Narsarsuaq" => 'nrs.tg.gl',
-        "Igaliku" => 'iga.tg.gl',
-        "Paamiut" => 'paa.tg.gl',
-        "Maniitsoq" => 'man.tg.gl',
-        "Kangerlussuaq" => 'kan.tg.gl',
-        "Sisimiut" => 'sis.tg.gl',
-        "Aasiaat" => 'aas.tg.gl',
-        "Qeqertarsuaq" => 'qeq.tg.gl',
-        "Ilulissat" => 'ilu.tg.gl',
-        "Qasigiannguit" => 'qas.tg.gl',
-        "Upernavik" => 'upv.tg.gl',
-        "Uummannaq" =>'uum.tg.gl',
-        "Alaska" =>'alaska.tg.gl'
+        "Nuuk" => "nuk.tg.gl",
+        "Nanortalik" => "nan.tg.gl",
+        "Narsaq" => "nar.tg.gl",
+        "Qaqortoq" => "qaq.tg.gl",
+        "Qassiarsuk" => "qsk.tg.gl",
+        "Narsarsuaq" => "nrs.tg.gl",
+        "Igaliku" => "iga.tg.gl",
+        "Paamiut" => "paa.tg.gl",
+        "Maniitsoq" => "man.tg.gl",
+        "Kangerlussuaq" => "kan.tg.gl",
+        "Sisimiut" => "sis.tg.gl",
+        "Aasiaat" => "aas.tg.gl",
+        "Qeqertarsuaq" => "qeq.tg.gl",
+        "Ilulissat" => "ilu.tg.gl",
+        "Qasigiannguit" => "qas.tg.gl",
+        "Upernavik" => "upv.tg.gl",
+        "Uummannaq" =>"uum.tg.gl",
+        "Alaska" =>"ala.tg.gl"
     }.
     
 
