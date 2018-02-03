@@ -16,7 +16,6 @@
 -include("../include/em.hrl").
  
 -export([
-    create_schema/0,
     add_user/1,
     delete_user/1,
     get_users/1,
@@ -30,176 +29,142 @@
     user_exists/1,
     get_type/1,
     set_pass/2,
-    get_user/1
+    set_vmail/3,
+    delete_vmail/1,
+    get_vmail_user/1,
+    get_vmail_pass/1,
+    get_phonecontext/1,
+    set_phonecontext/2
     ]).
 
--record(em_srd, {user, pass, pubid, phone, group, vmuser, vmpass, type}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-create_schema() ->
-    application:set_env(mnesia, dir, "/var/lib/eventmanager"),
-    mnesia:create_schema([node()]),
-    application:ensure_all_started(mnesia),
-    ok = create_tables(),
-    mnesia:backup("FALLBACK.BUP"),
-    mnesia:install_fallback("FALLBACK.BUP"),
-    application:stop(mnesia).
-
-create_tables() ->
-    {atomic, ok} = mnesia:create_table(
-        em_srd,
-        [{disc_copies, [node()]},
-        {type, set},
-        {attributes, record_info(fields, em_srd)}]),
-        ok.
-
 add_user(#event{user=U, group=G, pubid=P, type=T}) ->
-        
-    User=#em_srd{user=U, 
-                pubid=P, 
-                group=G, 
-                type=T,
-                phone=undefined},
-    
-    F = fun () ->
-        case mnesia:read({em_srd, U}) =:= [] of
-            true -> mnesia:write(User);
-            false -> {error, {activation_error, data_error, 'The user must not already exist in the SRD'}}
-        end
-    end,
-    mnesia:activity(transaction, F),
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext) values ($1,$2,$3,$4,'tg.gl')", [U,G,P,T]),
+    ok = epgsql:close(C),
     {ok, success}.
     
-
 delete_user(UserName) ->
-    F = fun () ->
-        case mnesia:read({em_srd, UserName}) =/= [] of
-            true -> mnesia:delete({em_srd, UserName});
-            false -> {error, {termination_error, data_error, 'The user must exist in the SRD'}}
-        end
-    end,
-    mnesia:activity(transaction, F),
-    {ok, success}.
-
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "delete from srd_user where id=$1", [UserName]),
+    ok = epgsql:close(C),
+    {ok, success}.    
+    
 set_e164(#event{user=U, phone=P})->
-    F = fun () ->
-        case mnesia:read({em_srd, U}) =:= [] of
-            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
-            false ->
-                [R] = mnesia:wread({em_srd, U}),
-                mnesia:write(R#em_srd{phone = P})
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1 where id=$2", [P,U]),
+    ok = epgsql:close(C),
+    {ok, success}.
     
 delete_e164(UserId)->
-    F = fun () ->
-        case mnesia:read({em_srd, UserId}) =:= [] of
-            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
-            false ->
-                [R] = mnesia:wread({em_srd, UserId}),
-                mnesia:write(R#em_srd{phone = undefined})
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA' where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    {ok, success}.
 
 get_e164(UserId) ->
-    F = fun() ->
-        case mnesia:read({em_srd, UserId}) of  
-            [#em_srd{phone=E}] -> E;
-            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(e164) from srd_user where id= $1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
 
 get_sipuri(UserId) ->
-    F = fun() ->
-        case mnesia:read({em_srd, UserId}) of 
-            [#em_srd{pubid=S}] -> S;
-            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(sipurl) from srd_user where id= $1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
 
 set_sipuri(#event{user=U, pubid=P})->
-    F = fun () ->
-        case mnesia:read({em_srd, U}) =:= [] of
-            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
-            false ->
-                [R] = mnesia:wread({em_srd, U}),
-                mnesia:write(R#em_srd{pubid = P})
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$2", [P,U]),
+    ok = epgsql:close(C),
+    {ok, success}.
     
 set_sipuri_default(UserId)->
-    F = fun () ->
-        case mnesia:read({em_srd, UserId}) =:= [] of
-            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
-            false ->
-                [R] = mnesia:wread({em_srd, UserId}),
-                mnesia:write(R#em_srd{pubid = UserId})
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    {ok, success}.
     
 get_group(UserId) ->
-    F = fun() ->
-        case mnesia:read({em_srd, UserId}) of  
-            [#em_srd{group=E}] -> E;
-            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(group_id) from srd_user where id= $1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
     
-set_pass(UserName, Pass)->
-    F = fun () ->
-        case mnesia:read({em_srd, UserName}) =:= [] of
-            true -> {error, {activation_error, data_error, 'The user must exist in the SRD'}};
-            false ->
-                [R] = mnesia:wread({em_srd, UserName}),
-                mnesia:write(R#em_srd{pass = Pass})
-        end
-    end,
-    mnesia:activity(transaction, F).
+set_pass(UserId, Pass)->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set password=$1 where id=$2", [Pass,UserId]),
+    ok = epgsql:close(C),
+    {ok, success}.
     
 user_exists(UserId) ->
-    F = fun() ->
-        case mnesia:read({em_srd, UserId}) of  
-            [] -> false;
-            _ -> true
-        end
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select exists(select 1 from srd_user where id=$1)", [UserId]),
+    ok = epgsql:close(C),
     
-
-get_type(UserName) ->
-    F = fun() ->
-        case mnesia:read({em_srd, UserName}) of 
-            [#em_srd{type=S}] -> S;
-            [] -> {error, {activation_error, data_error, 'The user must exist in the SRD'}}
-        end
-    end,
-    mnesia:activity(transaction, F).
+    case Rows of
+        [{false}] -> false;
+        
+        [{true}] -> true
+    end.
     
-
+get_type(UserId) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(user_type) from srd_user where id= $1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
+    
 get_users(GrpId) ->
-    F = fun() ->
-        Result = '$1',
-        User = #em_srd{user = '$1', group = GrpId, _ = '_'},
-        mnesia:select(em_srd, [{User, [], [Result]}])
-    end,
-    mnesia:activity(transaction, F).
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(id) from srd_user where group_id=$1", [GrpId]),
+    ok = epgsql:close(C),
+    Rows.
     
-get_user(UserName) ->
-    F = fun() ->
-        mnesia:match_object(#em_srd{user = UserName, _ = '_'})
-    end,
-    mnesia:activity(transaction, F). 
+set_vmail(UserName, MailUser, MailPass) ->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user=$1, vmail_password=$2 where id=$3", [MailUser,MailPass,UserName]),
+    ok = epgsql:close(C),
+    {ok, success}.
+    
+delete_vmail(UserId)->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user='NODATA', vmail_password='NODATA' where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    {ok, success}.   
+    
+get_vmail_user(UserId) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(vmail_user) from srd_user where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
+
+get_vmail_pass(UserId) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(vmail_password) from srd_user where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
+
+get_phonecontext(UserId) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select phonecontext from srd_user where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    Rows.
+    
+set_phonecontext(UserId, PhoneContext)->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set phonecontext=$1 where id=$2", [PhoneContext,UserId]),
+    ok = epgsql:close(C),
+    {ok, success}.
     
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+connect() ->
+        {ok, C} = epgsql:connect("localhost", "srd", "mysecretpassword",
+        [{database, "srd"},{timeout, 4000}]),
+        C.
