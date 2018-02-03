@@ -27,26 +27,25 @@ create(Event) ->
     em_ema_session:close(State).
         
 delete(#event{user=UserName}) ->
-    CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone = em_srd:get_e164(UserName),
+    [{CurrentPubId}] = em_srd:get_sipuri(UserName),
+    [{CurrentPhone}] = em_srd:get_e164(UserName),
+
+    CurrentPubId1 = binary_to_list(CurrentPubId),
+    CurrentPhone1 = binary_to_list(CurrentPhone),
 
     State=#state{session=em_ema_session:open()},
     
-        case CurrentPhone of
-            undefined ->
+        case CurrentPhone1 of
+            "NODATA" ->
                em_hss:delete({subscriber, UserName}, State),
                {ok, _} = em_srd:delete_user(UserName);
-            nil ->
-                em_hss:delete({subscriber, UserName}, State),
-                {ok, _} = em_srd:delete_user(UserName);
            
             _ ->
-                em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
+                em_hss:delete({enum, CurrentPhone1, CurrentPubId1}, State),
                 em_hss:delete({subscriber, UserName}, State),
                 {ok, _} = em_srd:delete_user(UserName)
         end,
     em_ema_session:close(State).   
-
 
 modify(#event{pubid=undefined, phone=undefined}) ->
     ?INFO_MSG("Ignoring (all undefined): ~n", []); 
@@ -54,15 +53,19 @@ modify(#event{pubid=undefined, phone=undefined}) ->
 modify(#event{current_pubid=X1, pubid=X1, phone=Y1, current_phone=Y1}) ->
     ?INFO_MSG("Ignoring (default pubid already set): ~n", []); 
 
-modify(#event{current_pubid=X1, pubid=X1, phone=nil, current_phone=undefined}) ->
+modify(#event{current_pubid=X1, pubid=X1, phone=nil, current_phone="NODATA"}) ->
     ?INFO_MSG("Ignoring (phone nil, current phone undefined): ~n", []); 
     
 modify(#event{user=Z1, current_pubid=Z1, pubid=nil, phone=Y2, current_phone=Y2}) ->
     ?INFO_MSG("Ignoring (pubid default, no phone change): ~n", []); 
 
+
+modify(#event{user=Z1, current_pubid=Z1, pubid=nil, phone=nil, current_phone="NODATA"}) ->
+    ?INFO_MSG("Ignoring (empty pubid, default is set, no phone change): ~n", []); 
+
 % State: PublicId is set, no phone exist.
 % CommPilot: PublicId = empty, Phone = empty  
-modify(Event=#event{user=Z1, current_pubid=X1, pubid=nil, phone=nil, current_phone=undefined}) ->
+modify(Event=#event{user=Z1, current_pubid=X1, pubid=nil, phone=nil, current_phone="NODATA"}) ->
     ?INFO_MSG("Updating pubid to default PubId: ~n", []),
     State=#state{session=em_ema_session:open()}, 
     em_hss:delete({pubid, Z1, X1}, State),
@@ -74,7 +77,7 @@ modify(Event=#event{user=Z1, current_pubid=X1, pubid=nil, phone=nil, current_pho
 
 % State: PublicId is set, no phone exist.
 % CommPilot: PublicId = empty, Phone = a number is selected 
-modify(Event=#event{current_pubid=X1, pubid=nil, phone=Y1, current_phone=undefined}) ->
+modify(Event=#event{current_pubid=X1, pubid=nil, phone=Y1, current_phone="NODATA"}) ->
     ?INFO_MSG("Creating phone: ~p", [Y1]),
     State=#state{session=em_ema_session:open()},
     em_srd:set_e164(Event),
@@ -84,7 +87,7 @@ modify(Event=#event{current_pubid=X1, pubid=nil, phone=Y1, current_phone=undefin
 
 % State: PublicId is set, no phone exist.
 % CommPilot: PublicId = default pubId is set, Phone = a number is selected  
-modify(Event=#event{current_pubid=X1, pubid=X1, phone=Y1, current_phone=undefined}) ->
+modify(Event=#event{current_pubid=X1, pubid=X1, phone=Y1, current_phone="NODATA"}) ->
     ?INFO_MSG("Creating phone: ~p", [Y1]),
     State=#state{session=em_ema_session:open()},
     em_srd:set_e164(Event),
@@ -99,6 +102,17 @@ modify(#event{user=Z1, current_pubid=X1, pubid=X1, phone=nil, current_phone=Y1})
     State=#state{session=em_ema_session:open()},
     em_hss:delete({enum, Y1, X1}, State),
     em_hss:delete({teluri, Z1, Y1}, State),
+    em_srd:delete_e164(Z1),
+    em_ema_session:close(State);  
+
+
+% State: PublicId is set to default, phone exist.
+% CommPilot: PublicId = empty, Phone = empty      
+modify(#event{user=Z1, current_pubid=Z1, pubid=Z1, phone=undefined, current_phone=Y2}) ->
+    ?INFO_MSG("Deleting phone (no pubid change, already default): ~n", []),
+    State=#state{session=em_ema_session:open()},
+    em_hss:delete({enum, Y2, Z1}, State),
+    em_hss:delete({teluri, Z1, Y2}, State),
     em_srd:delete_e164(Z1),
     em_ema_session:close(State);  
 
@@ -154,7 +168,7 @@ modify(Event=#event{user=Z1, current_pubid=X1, pubid=nil, phone=Y1, current_phon
 
 % State: PublicId is set, no phone exist.
 % CommPilot: PublicId = empty, Phone = is empty     
-modify(Event=#event{user=Z1, current_pubid=X1, phone=nil, current_phone=undefined}) ->
+modify(Event=#event{user=Z1, current_pubid=X1, phone=nil, current_phone="NODATA"}) ->
     ?INFO_MSG("Updating pubid, no change to phone, since undefined): ~n", []),    
     State=#state{session=em_ema_session:open()},
     em_hss:delete({pubid, Z1, X1}, State),
@@ -224,6 +238,8 @@ modify(Event=#event{user=Z1, current_pubid=X1, current_phone=Y2}) ->
 
 modify(_) ->
     ?ERROR_MSG("Invalid Event record state: ~n", []).     
+    
+  
     
     
     

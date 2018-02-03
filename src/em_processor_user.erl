@@ -14,7 +14,7 @@
 
 -module(em_processor_user).
 
--export([create/1, delete/1, modify/1, set_password/2, set_phonecontext/2]).
+-export([create/1, delete/1, modify/1, set_password/2, set_phonecontext/3]).
 -include("../include/em.hrl").
 
 %%%===================================================================
@@ -28,42 +28,58 @@ create(Event) ->
         
     
 delete(#event{user=UserName}) ->
-    CurrentPubId = em_srd:get_sipuri(UserName),
-    CurrentPhone = em_srd:get_e164(UserName),
+    [{CurrentPubId}] = em_srd:get_sipuri(UserName),
+    [{CurrentPhone}] = em_srd:get_e164(UserName),
+
+    CurrentPubId1 = binary_to_list(CurrentPubId),
+    CurrentPhone1 = binary_to_list(CurrentPhone),
+    
+    [{MailUser}] = em_srd:get_vmail_user(UserName),
+    MailUser1 = binary_to_list(MailUser),
+    
+        case MailUser1 of
+            "NODATA" ->
+                ok;
+            _ ->
+                em_processor_vmail:delete_account(MailUser1)
+                
+        end,
+    
 
     State=#state{session=em_ema_session:open()},
     
-        case CurrentPhone of
-            undefined ->
+        case CurrentPhone1 of
+            "NODATA" ->
                em_hss:delete({subscriber, UserName}, State),
                {ok, _} = em_srd:delete_user(UserName);
-            nil ->
-                em_hss:delete({subscriber, UserName}, State),
-                {ok, _} = em_srd:delete_user(UserName);
            
             _ ->
-                em_hss:delete({enum, CurrentPhone, CurrentPubId}, State),
+                em_hss:delete({enum, CurrentPhone1, CurrentPubId1}, State),
                 em_hss:delete({subscriber, UserName}, State),
                 {ok, _} = em_srd:delete_user(UserName)
         end,
     em_ema_session:close(State). 
+
 
 modify(Event=#event{current_type=trunk}) ->
     ?INFO_MSG("Changing user type from trunk to user: ~n", []),
     delete(Event),
     create(Event),
     modify(Event#event{current_type=user});
+
+modify(#event{pubid=undefined, phone=undefined}) ->
+    ?INFO_MSG("Ignoring (all undefined): ~n", []); 
     
-modify(#event{user=X1, pubid=X1, phone=nil, current_pubid=X1, current_phone=undefined}) ->
+modify(#event{user=X1, pubid=X1, phone=nil, current_pubid=X1, current_phone="NODATA"}) ->
     ?INFO_MSG("Ignoring ~n", []);
     
-modify(#event{user=Z1, pubid=Z1, phone=nil, current_pubid=Z1, current_phone=undefined}) ->
+modify(#event{user=Z1, pubid=Z1, phone=nil, current_pubid=Z1, current_phone="NODATA"}) ->
     ?INFO_MSG("Ignoring, all default)~n", []);
 
-modify(#event{user=_Z1, pubid=X1, phone=nil, current_pubid=X1, current_phone=undefined}) ->
+modify(#event{user=_Z1, pubid=X1, phone=nil, current_pubid=X1, current_phone="NODATA"}) ->
     ?INFO_MSG("Ignoring no change to pubid, no phone()~n", []);  
 
-modify(#event{user=Z1, pubid=Z1, phone=undefined, current_pubid=Z1, current_phone=undefined}) ->
+modify(#event{user=Z1, pubid=Z1, phone=undefined, current_pubid=Z1, current_phone="NODATA"}) ->
     ?INFO_MSG("Ignoring))~n", []);
 
 modify(#event{user=Z1, pubid=Z1, phone=X1, current_pubid=Z1, current_phone=X1}) ->
@@ -77,7 +93,7 @@ modify(#event{user=Z1, pubid=X1, current_pubid=X1, phone=nil, current_phone=X2})
     em_srd:delete_e164(Z1),
     em_ema_session:close(State);  
     
-modify(Event=#event{user=Z1, pubid=_X1, current_pubid=X2, phone=nil, current_phone=undefined}) ->
+modify(Event=#event{user=Z1, pubid=_X1, current_pubid=X2, phone=nil, current_phone="NODATA"}) ->
     ?INFO_MSG("Update pubId )~n", []),
     State=#state{session=em_ema_session:open()},
     em_hss:delete({pubid, Z1, X2}, State),
@@ -87,7 +103,7 @@ modify(Event=#event{user=Z1, pubid=_X1, current_pubid=X2, phone=nil, current_pho
     em_hss:create({pubid, Event}, State),
     em_ema_session:close(State);  
        
-modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phone=undefined}) ->
+modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phone="NODATA"}) ->
     ?INFO_MSG("Create phone on default pubid (no change to PubID))~n", []),
     State=#state{session=em_ema_session:open()},
     em_srd:set_e164(Event),
@@ -113,7 +129,7 @@ modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phon
     em_hss:create({enum, Event}, State),
     em_ema_session:close(State);  
     
-modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_phone=undefined}) ->
+modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_phone="NODATA"}) ->
     ?INFO_MSG("Create phone on new pubId ~n", []),
     State=#state{session=em_ema_session:open()},
     em_hss:delete({pubid, Z1, X2}, State),
@@ -162,9 +178,23 @@ set_password(UserName, Pass) ->
     em_srd:set_pass(UserName, Pass),
     em_ema_session:close(State).
 
-set_phonecontext(UserName, PhoneContext) ->
+
+
+set_phonecontext(_UserName, PhoneContext, PhoneContext) ->
+    ignore;
+set_phonecontext(_UserName, undefined, "NODATA") ->
+    ignore;
+    
+%set_phonecontext(UserName, undefined, _CurrentPhoneContext) ->
+%    State=#state{session=em_ema_session:open()},
+%    em_hss:update({phonecontext, UserName, "tg.gl"}, State),
+%    em_srd:set_phonecontext(UserName, "tg.gl"),
+%    em_ema_session:close(State);
+            
+set_phonecontext(UserName, PhoneContext, _CurrentPhoneContext) ->
     State=#state{session=em_ema_session:open()},
     em_hss:update({phonecontext, UserName, PhoneContext}, State),
+    em_srd:set_phonecontext(UserName, PhoneContext),
     em_ema_session:close(State).
 
 %modify(#event{user=X1, pubid=X2, phone=X3, current_pubid=X4, current_phone=X5}) ->
