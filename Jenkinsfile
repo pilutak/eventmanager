@@ -17,11 +17,6 @@ pipeline{
                 sh "make tests"
             }
         }
-        stage ("Dialyze") {
-            steps {
-                sh "make dialyze"
-            }
-        }
  	stage ("Release") {
             steps {
                 sh "make rel && cp _rel/*/*.tar.gz /releases" 
