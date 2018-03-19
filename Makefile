@@ -6,4 +6,8 @@ PROJECT_ENV = [{bw_hosts,["any.host.com"]},{ema,{"http://10.8.10.132:8998","soga
 
 DEPS = jsx epgsql elli
 
+DEPS = elli
+DEPS = jsx
+DEPS = epgsql
+
 include erlang.mk
