@@ -61,7 +61,9 @@ modify(Event=#event{current_type="trunk", phone=Phone,current_phone=CPhone}) ->
             em_srd:set_e164(Event),
             em_ema_server:create_hss_teluri(Event),
             em_ema_server:create_enum(Event);
-       
+       "NODATA" ->
+           ok;
+           
         _ ->
             em_ema_server:delete_enum(CPhone)
     end,
