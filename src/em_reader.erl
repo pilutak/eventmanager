@@ -133,7 +133,7 @@ parser_message(_,_)->
 await_result(Pid) ->
     receive
         {'EXIT', Pid, normal} ->
-            ?ERROR_MSG("EXIT normal: ~p", [Pid]), 
+            %?ERROR_MSG("EXIT normal: ~p", [Pid]), 
             ok;
         {'EXIT', Pid, shutdown} -> 
             ?ERROR_MSG("EXIT shutdown: ~p", [Pid]),

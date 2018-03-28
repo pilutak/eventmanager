@@ -165,6 +165,7 @@ set_phonecontext(UserId, PhoneContext)->
 %%% Internal functions
 %%%===================================================================
 connect() ->
-        {ok, C} = epgsql:connect("localhost", "srd", "mysecretpassword",
-        [{database, "srd"},{timeout, 4000}]),
-        C.
+    {ok, PGHost} = application:get_env(em, pg_host),
+    {ok, C} = epgsql:connect(PGHost, "srd", "srd", [{database, "srd"},{timeout, 4000}]),
+    C.
+

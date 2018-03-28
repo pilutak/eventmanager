@@ -23,7 +23,7 @@
 %%%===================================================================
 process(CommandType, Message) ->
     Processor = maps:get(CommandType, processors(), ignored),
-    ?INFO_MSG("selecting processor: ~p", [Processor]), 
+    %?INFO_MSG("selecting processor: ~p", [Processor]), 
     processor(Processor, Message).
 
 %%%===================================================================
@@ -145,12 +145,10 @@ processor(modify_user, Message) ->
     [TG] = em_utils:get_elements(trunkGroupDeviceEndpoint, em_utils:get_element_childs(T)),
     [LP] = em_utils:get_elements(linePort, em_utils:get_element_childs(TG)),
     TrunkLinePort = em_utils:get_element_text(LP),
-    io:format("Trunk LinePort: ~p~n",[TrunkLinePort]),
     UserName = em_utils:get_element_text(U),
     Phone = em_utils:get_element_text(P),
     PublicId = em_utils:get_element_text(L),
     PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
-
 
     %%TODO We must send phonecontext modify command
     case PhoneContext of
@@ -172,12 +170,13 @@ processor(modify_user, Message) ->
    
    [{CurrentPubId}] = em_srd:get_sipuri(UserName),
    [{CurrentPhone}] = em_srd:get_e164(UserName),
+   [{Group}] = em_srd:get_group(UserName),
    
     Event=#event{
                 user = UserName, 
                 pubid = Pub, 
                 phone = Pho, 
-                group=em_srd:get_group(UserName), 
+                group=binary_to_list(Group), 
                 sprofile=Pub, 
                 current_pubid=binary_to_list(CurrentPubId), 
                 current_phone=binary_to_list(CurrentPhone)
@@ -185,8 +184,10 @@ processor(modify_user, Message) ->
                 
     case TrunkLinePort of
         undefined ->
-            em_processor_user:modify(type_is_user(Event));
+            ?INFO_MSG("This is normal user ~n", []),
+            em_processor_user:modify(type_user(Event));
         TrunkLinePort ->
+            ?INFO_MSG("This is an trunk device ~p", [TrunkLinePort]),
             em_processor_trunk:modify(type_is_trunk(Event))
     end;
 
@@ -222,7 +223,7 @@ processor(create_trunk, Message) ->
     SipPass = em_utils:get_element_text(SipPassWord),
     PubId = em_utils:get_element_text(LinePort),
     GrpId = em_utils:get_element_text(GroupId),
-    Event=#event{user=UserName, pass=SipPass, pubid=PubId, group=GrpId},
+    Event=#event{user=UserName, pass=SipPass, pubid=PubId, group=GrpId, sprofile=UserName},
     em_processor_trunk:create(type_is_pilot(Event));
 
 %processor("GroupTrunkGroupModifyInstanceRequest20sp1", Message, _Ctx) ->
@@ -281,34 +282,51 @@ processor(ignored, _Message) ->
 type_is_virtual(Event) ->
     Event#event{type='virtual',
                   csprofile='IMT_VIRTUAL',
-                  ispsi='TRUE',
-                  isdefault='FALSE',
-                  irs='0',
-                  pass=randchar(14)}.
+                  ispsi='true',
+                  isdefault='true',
+                  irs='0'}.
 
-type_is_trunk(Event=#event{user=UserName}) ->
+type_is_trunk(Event=#event{user=UserName}) ->  
+    [{Type}] = em_srd:get_type(UserName),
+    CurrentType = binary_to_list(Type),
+    ?INFO_MSG("Current usertype is: ~p", [CurrentType]),
+    
     Event#event{type='trunk',
                   csprofile='BusinessTrunk_wild',
-                  ispsi='TRUE',
-                  isdefault='FALSE',
+                  ispsi='true',
+                  isdefault='true',
                   irs='0',
                   pass=randchar(14),
-                  current_type=em_srd:get_type(UserName)}.
+                  current_type=CurrentType}.
 
-type_is_user(Event=#event{user=UserName}) ->
+type_is_user(Event) ->
     Event#event{type='user',
                   csprofile='IMS_CENTREX',
-                  ispsi='FALSE',
-                  isdefault='TRUE',
+                  ispsi='false',
+                  isdefault='false',
                   irs='1',
                   pass=randchar(14),
-                  current_type=em_srd:get_type(UserName)}.      
+                  current_type='user'}.      
+
+
+type_user(Event=#event{user=UserName}) ->
+    [{Type}] = em_srd:get_type(UserName),
+    CurrentType = binary_to_list(Type),
+
+    Event#event{type='user',
+                  csprofile='IMS_CENTREX',
+                  ispsi='false',
+                  isdefault='false',
+                  irs='1',
+                  pass=randchar(14),
+                  current_type=CurrentType}.      
+
 
 type_is_pilot(Event) ->
     Event#event{type='pilot',
                   csprofile='BusinessTrunk',
-                  ispsi='FALSE',
-                  isdefault='TRUE',
+                  ispsi='false',
+                  isdefault='false',
                   irs='1'}.  
 
 nil_fix(undefined, false) ->
