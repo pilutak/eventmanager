@@ -13,8 +13,6 @@
 %%% limitations under the License.
 
 -module(em_ema_server).
--include("../include/em2.hrl").
-
 -behaviour(gen_server).
 
 %% API
