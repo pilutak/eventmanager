@@ -16,7 +16,7 @@
 -include("../include/em.hrl").
  
 -export([
-    add_user/1,
+    create_user/1,
     delete_user/1,
     get_users/1,
     set_e164/1,
@@ -42,59 +42,79 @@
 %%% API
 %%%===================================================================
 
-add_user(#event{user=U, group=G, pubid=P, type=T}) ->
-    C = connect(),
-    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext) values ($1,$2,$3,$4,'tg.gl')", [U,G,P,T]),
-    ok = epgsql:close(C),
-    {ok, success}.
+create_user(IMSAssociation) ->
+    Id = maps:get(user, IMSAssociation),
+    PubId = Id,
+    GroupId = maps:get(group, IMSAssociation),
+    Type = maps:get(type, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),
     
-delete_user(UserName) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "delete from srd_user where id=$1", [UserName]),
-    ok = epgsql:close(C),
-    {ok, success}.    
+    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext, association_id) values ($1,$2,$3,$4,'tg.gl',$5)", [Id,GroupId,PubId,Type,AssociationId]),
+    epgsql:close(C).
     
-set_e164(#event{user=U, phone=P})->
+delete_user(IMSAssociation) ->
+    Id = maps:get(user, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1 where id=$2", [P,U]),
-    ok = epgsql:close(C),
-    {ok, success}.
+    {ok, _} = epgsql:equery(C, "delete from srd_user where id=$1", [Id]),
+    epgsql:close(C).
+        
+set_e164(IMSAssociation) ->
+    Id = maps:get(user, IMSAssociation),
+    Phone = maps:get(phone, IMSAssociation),
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1 where id=$2", [Phone,Id]),
+    epgsql:close(C).
+        
+delete_e164(Id)->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA' where id=$1", [Id]),
+    epgsql:close(C).
     
-delete_e164(UserId)->
+get_e164(IMSAssociation) ->
+    Id = maps:get(user, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA' where id=$1", [UserId]),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(e164) from srd_user where id= $1", [Id]),
     ok = epgsql:close(C),
-    {ok, success}.
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
+    
+get_sipuri(IMSAssociation) ->
+    Id = maps:get(user, IMSAssociation),
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(sipurl) from srd_user where id= $1", [Id]),
+    ok = epgsql:close(C),
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
 
-get_e164(UserId) ->
+set_sipuri(IMSAssociation)->
+    Id = maps:get(user, IMSAssociation),
+    PubId = maps:get(pubid, IMSAssociation),
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select trim(e164) from srd_user where id= $1", [UserId]),
-    ok = epgsql:close(C),
-    Rows.
-
-get_sipuri(UserId) ->
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$2", [PubId,Id]),
+    epgsql:close(C). 
+       
+set_sipuri_default(IMSAssociation)->
+    Id = maps:get(user, IMSAssociation),
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select trim(sipurl) from srd_user where id= $1", [UserId]),
-    ok = epgsql:close(C),
-    Rows.
-
-set_sipuri(#event{user=U, pubid=P})->
-    C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$2", [P,U]),
-    ok = epgsql:close(C),
-    {ok, success}.
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$1", [Id]),
+    epgsql:close(C).
     
-set_sipuri_default(UserId)->
+get_group(Id) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$1", [UserId]),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(group_id) from srd_user where id= $1", [Id]),
     ok = epgsql:close(C),
-    {ok, success}.
-    
-get_group(UserId) ->
-    C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select trim(group_id) from srd_user where id= $1", [UserId]),
-    ok = epgsql:close(C),
-    Rows.
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
     
 set_pass(UserId, Pass)->
     C = connect(),
@@ -113,11 +133,16 @@ user_exists(UserId) ->
         [{true}] -> true
     end.
     
-get_type(UserId) ->
+get_type(IMSAssociation) ->
+    Id = maps:get(user, IMSAssociation),
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select trim(user_type) from srd_user where id= $1", [UserId]),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(user_type) from srd_user where id= $1", [Id]),
     ok = epgsql:close(C),
-    Rows.
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
     
 get_users(GrpId) ->
     C = connect(),
@@ -128,14 +153,12 @@ get_users(GrpId) ->
 set_vmail(UserName, MailUser, MailPass) ->
     C = connect(),
     {ok, _} = epgsql:equery(C, "update srd_user set vmail_user=$1, vmail_password=$2 where id=$3", [MailUser,MailPass,UserName]),
-    ok = epgsql:close(C),
-    {ok, success}.
-    
+    epgsql:close(C).
+        
 delete_vmail(UserId)->
     C = connect(),
     {ok, _} = epgsql:equery(C, "update srd_user set vmail_user='NODATA', vmail_password='NODATA' where id=$1", [UserId]),
-    ok = epgsql:close(C),
-    {ok, success}.   
+    epgsql:close(C).
     
 get_vmail_user(UserId) ->
     C = connect(),
@@ -151,16 +174,19 @@ get_vmail_pass(UserId) ->
 
 get_phonecontext(UserId) ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select phonecontext from srd_user where id=$1", [UserId]),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(phonecontext) from srd_user where id=$1", [UserId]),
     ok = epgsql:close(C),
-    Rows.
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
     
 set_phonecontext(UserId, PhoneContext)->
     C = connect(),
     {ok, _} = epgsql:equery(C, "update srd_user set phonecontext=$1 where id=$2", [PhoneContext,UserId]),
-    ok = epgsql:close(C),
-    {ok, success}.
-    
+    epgsql:close(C).
+        
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

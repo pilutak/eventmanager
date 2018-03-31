@@ -28,7 +28,9 @@
     get_element_name/1,
     get_element_text/1,
     log/1,
-    log/2
+    log/2,
+    randchar/1,
+    md5_hex/1
     ]).
     
 %%%===================================================================
@@ -95,6 +97,20 @@ log(Message,List) ->
     io:format(S,Message,List),
     file:close(S).
 
+
+% We use this to create a temporarily SIP password. The password is later
+% overwritten by an seperate event (not for virtual users, the password remains).
+randchar(N) ->
+   randchar(N, []).
+   
+randchar(0, Acc) ->
+   Acc;
+randchar(N, Acc) ->
+   randchar(N - 1, [rand:uniform(26) + 96 | Acc]). 
+   
+md5_hex(S) ->
+    <<X:128/integer>> = crypto:hash(md5, S),
+    lists:flatten(io_lib:format("~32.16.0b", [X])).  
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================

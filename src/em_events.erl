@@ -23,20 +23,27 @@
 %%%===================================================================
 process(CommandType, Message) ->
     Processor = maps:get(CommandType, processors(), ignored),
-    %?INFO_MSG("selecting processor: ~p", [Processor]), 
     processor(Processor, Message).
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 processor(create_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
-    UserName = em_utils:get_element_text(ServiceUserId),
-    GrpId = em_utils:get_element_text(GroupId), 
-    Event=#event{user=UserName, pubid=UserName, group=GrpId, sprofile=UserName},
-    em_processor_service:create(type_is_virtual(Event));
+    
+    User = em_utils:get_element_text(ServiceUserId),
+    IMSAssociation = #{
+        user        => em_utils:get_element_text(ServiceUserId),
+        pubid       => em_utils:get_element_text(ServiceUserId),
+        group       => em_utils:get_element_text(GroupId),
+        type        => 'virtual',
+        csprofile   => 'IMT_VIRTUAL',
+        ispsi       => 'true',
+        isdefault   => 'false',
+        irs         => '0',
+        association => em_utils:md5_hex(User),
+        phone       => 'NODATA'
+    },
+    ok = em_processor_service:create_user(IMSAssociation);
 
 processor(modify_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -44,45 +51,56 @@ processor(modify_service, Message) ->
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
     [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
-    UserName = em_utils:get_element_text(ServiceUserId),
-    PublicId = em_utils:get_element_text(PublicUserIdentity),
-    Phone = em_utils:get_element_text(PhoneNumber),
-    PubId_is_nil = em_utils:get_element_attributes('xsi:nil',PublicUserIdentity) =:= "true",
-    Phone_is_nil = em_utils:get_element_attributes('xsi:nil',PhoneNumber) =:= "true",
-    Pub = nil_fix(PublicId, PubId_is_nil), 
-    Pho = nil_fix(Phone, Phone_is_nil),
+
+    User = em_utils:get_element_text(ServiceUserId),
+    IMSAssociation = #{
+        user        => em_utils:get_element_text(ServiceUserId),
+        pubid       => fix_nil(PublicUserIdentity),
+        phone       => fix_nil(PhoneNumber),
+        type        => 'virtual',
+        csprofile   => 'IMT_VIRTUAL',
+        ispsi       => 'true',
+        isdefault   => 'false',
+        irs         => '0',
+        association => em_utils:md5_hex(User)
+    },
     
-    [{CurrentPubId}] = em_srd:get_sipuri(UserName),
-    [{CurrentPhone}] = em_srd:get_e164(UserName),
-    
-    Event=#event{user=UserName, pubid=Pub, phone=Pho, sprofile=Pub, current_pubid=binary_to_list(CurrentPubId), current_phone=binary_to_list(CurrentPhone)},
-    em_processor_service:modify(type_is_virtual(Event));
-    
+    % In order not to have the "profile" CommPilot page to trigger modify, we check
+    % if the PubId field is present, if not, the request is ignored.
+    case fix_nil(PublicUserIdentity) of
+        undefined -> ok;
+        _ -> ok = em_processor_service:modify_user(IMSAssociation)
+        
+    end;
+        
 processor(modify_group_vp, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
-    [P] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
-    [Pub] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
-    Phone = em_utils:get_element_text(P),
-    PubId = em_utils:get_element_text(Pub),
-    GrpId = em_utils:get_element_text(GroupId),
-    UserName = PubId,
+    [Phone] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
+    [PubId] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
+
+    User = fix_nil(PubId),
     
-    Event=#event{user=PubId, pubid=PubId, phone=Phone, group=GrpId},  
+    IMSAssociation = #{
+        user        => User,
+        pubid       => fix_nil(PubId),
+        phone       => fix_nil(Phone),
+        type        => 'virtual',
+        csprofile   => 'IMT_VIRTUAL',
+        ispsi       => 'true',
+        isdefault   => 'false',
+        irs         => '0',
+        group       => fix_nil(GroupId),
+        association => em_utils:md5_hex(User) 
+    },
     
-    case em_srd:user_exists(UserName) of
+    case em_srd:user_exists(User) of
         false ->
-            em_processor_service:create(type_is_virtual(Event)),
+            em_processor_service:create_user(IMSAssociation);
             
-            Event1 = Event#event{current_pubid=PubId, current_phone="NODATA"},
-            em_processor_service:modify(type_is_virtual(Event1));
         true ->
-            [{CurrentPubId}] = em_srd:get_sipuri(UserName),
-            [{CurrentPhone}] = em_srd:get_e164(UserName),
-            
-            Event2 = Event#event{current_pubid=binary_to_list(CurrentPubId), current_phone=binary_to_list(CurrentPhone)},
-            em_processor_service:modify(type_is_virtual(Event2))
+            em_processor_service:modify_user(IMSAssociation)
     end;
 
 processor(modify_user_vm, Message) ->
@@ -95,34 +113,38 @@ processor(modify_user_vm, Message) ->
     MailUser = em_utils:get_element_text(G),
     MailPass = em_utils:get_element_text(P),
     ?INFO_MSG("Processing vmail, LOADING EVENT: ~n", []), 
-    
-    [{CurrentMailUser}] = m_srd2:get_vmail_user(UserName),
-    [{CurrentMailPass}] = em_srd:get_vmail_pass(UserName),
-    
-    CurrentMailUser1 = binary_to_list(CurrentMailUser),
-    CurrentMailPass1 = binary_to_list(CurrentMailPass),
-    
-    VMEvent=#vmevent{user=UserName, 
-                    mailuser=MailUser, 
-                    mailpass=MailPass, 
-                    current_mailuser=CurrentMailUser1, 
-                    current_mailpass=CurrentMailPass1},
                     
-    ?INFO_MSG("Processing vmail: ~n", []), 
-    em_processor_vmail:modify(VMEvent);
+    IMSAssociation = #{
+        user        => UserName,
+        mailuser    => MailUser,
+        mailpass    => MailPass,
+        current_mailuser   => em_srd:get_vmail_user(UserName),
+        current_mailpass   => em_srd:get_vmail_pass(UserName)
+    },
+    em_processor_vmail:modify(IMSAssociation);
         
-    %TODO Create data in surgemail
-
 processor(create_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
-    [U] = em_utils:get_elements(userId, InsideCommand),
-    [G] = em_utils:get_elements(groupId, InsideCommand),
-    UserName = em_utils:get_element_text(U),
-    GrpId = em_utils:get_element_text(G),
-    Event=#event{user=UserName, pubid=UserName, group=GrpId, sprofile=UserName},
-    em_processor_user:create(type_is_user(Event));
-    
+    [UserId] = em_utils:get_elements(userId, InsideCommand),
+    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
 
+    User = em_utils:get_element_text(UserId),        
+    IMSAssociation = #{
+        user        => User,
+        pubid       => User,
+        group       => em_utils:get_element_text(GroupId),
+        type        => 'user',
+        csprofile   => 'IMS_CENTREX',
+        ispsi       => 'false',
+        isdefault   => 'false',
+        irs         => '1',
+        association => em_utils:md5_hex(User),
+        phone       => 'NODATA',
+        pass        => em_utils:randchar(14)
+    },
+    ok = em_processor_user:create_user(IMSAssociation);
+    
+    
 processor(modify_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
@@ -133,7 +155,7 @@ processor(modify_user, Message) ->
     [A] = em_utils:get_elements(accessDeviceEndpoint, em_utils:get_element_childs(E)),
     [L] = em_utils:get_elements(linePort, em_utils:get_element_childs(A)),
 
-    %% Fetch address/state (used for 112/113 emergency routing)
+    % Fetch address/state (used for 112/113 emergency routing)
     [AD] = em_utils:get_elements(address, InsideCommand),
     [SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
     City = em_utils:get_element_text(SP),
@@ -145,64 +167,77 @@ processor(modify_user, Message) ->
     [TG] = em_utils:get_elements(trunkGroupDeviceEndpoint, em_utils:get_element_childs(T)),
     [LP] = em_utils:get_elements(linePort, em_utils:get_element_childs(TG)),
     TrunkLinePort = em_utils:get_element_text(LP),
+    
     UserName = em_utils:get_element_text(U),
-    Phone = em_utils:get_element_text(P),
-    PublicId = em_utils:get_element_text(L),
-    PubId = fix_undefined(UserName, PublicId), % If publicId contains undefined, we replace it with UserName
+    Phone = fix_nil(P),
 
-    %%TODO We must send phonecontext modify command
     case PhoneContext of
         undefined ->
-            ignore; 
-            %CurrentPhoneContext = em_srd:get_phonecontext(UserName),
-            %em_processor_user:set_phonecontext(UserName, PhoneContext, CurrentPhoneContext);
-        PhoneContext ->
-            [{CurrentPhoneContext}] = em_srd:get_phonecontext(UserName),
-            CurrentPhoneContext1 = binary_to_list(CurrentPhoneContext),
-            em_processor_user:set_phonecontext(UserName, PhoneContext, CurrentPhoneContext1)
+            ok; 
+        _ ->
+            em_processor_user:set_phonecontext(UserName, PhoneContext, em_srd:get_phonecontext(UserName))
     end,
-   
-    PubId_is_nil = em_utils:get_element_attributes('xsi:nil',L) =:= "true",
-    Phone_is_nil = em_utils:get_element_attributes('xsi:nil',P) =:= "true",
-   
-    Pub = nil_fix(PubId, PubId_is_nil),        
-    Pho = nil_fix(Phone, Phone_is_nil),
-   
-   [{CurrentPubId}] = em_srd:get_sipuri(UserName),
-   [{CurrentPhone}] = em_srd:get_e164(UserName),
-   [{Group}] = em_srd:get_group(UserName),
-   
-    Event=#event{
-                user = UserName, 
-                pubid = Pub, 
-                phone = Pho, 
-                group=binary_to_list(Group), 
-                sprofile=Pub, 
-                current_pubid=binary_to_list(CurrentPubId), 
-                current_phone=binary_to_list(CurrentPhone)
-                },
-                
-    case TrunkLinePort of
-        undefined ->
-            ?INFO_MSG("This is normal user ~n", []),
-            em_processor_user:modify(type_user(Event));
-        TrunkLinePort ->
-            ?INFO_MSG("This is an trunk device ~p", [TrunkLinePort]),
-            em_processor_trunk:modify(type_is_trunk(Event))
-    end;
+    
 
+    case TrunkLinePort of
+         undefined when Phone == undefined ->
+             ok;
+         undefined when Phone /= undefined ->
+              ?INFO_MSG("Modify user ~n", []),
+              IMSAssociation = #{
+                  user        => UserName,
+                  pubid       => fix_nil(L),
+                  phone       => fix_nil(P),
+                  type        => 'user',
+                  csprofile   => 'IMS_CENTREX',
+                  ispsi       => 'false',
+                  isdefault   => 'false',
+                  irs         => '1',
+                  association => em_utils:md5_hex(UserName),
+                  sprofile    => fix_nil(L)
+              },
+              em_processor_user:modify_user(IMSAssociation);
+                  
+         _  -> 
+             ?INFO_MSG("Modify trunk user~n", []),
+             IMSAssociation1 = #{
+                 user        => UserName,
+                 pubid       => fix_nil(LP),
+                 phone       => fix_nil(P),
+                 type        => 'trunk',
+                 csprofile   => 'BusinessTrunk_wild',
+                 ispsi       => 'true',
+                 isdefault   => 'false',
+                 irs         => '0',
+                 association => em_utils:md5_hex(UserName),
+                 sprofile    => fix_nil(LP)
+             },
+             em_processor_trunk:modify_trunk_user(IMSAssociation1)
+             
+     end;  
+         
 
 processor(delete_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
-    UserName = em_utils:get_element_text(ServiceUserId),
-    em_processor_service:delete(#event{user=UserName});
+    User = em_utils:get_element_text(ServiceUserId),
+    
+    IMSAssociation = #{
+        user => User,
+        association => em_utils:md5_hex(User)
+    },
+    em_processor_service:delete_user(IMSAssociation);
 
 processor(delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
-    [U] = em_utils:get_elements(userId, InsideCommand),
-    UserName = em_utils:get_element_text(U),
-    em_processor_user:delete(#event{user=UserName});
+    [UserId] = em_utils:get_elements(userId, InsideCommand),
+    User = em_utils:get_element_text(UserId),
+
+    IMSAssociation = #{
+        user => User,
+        association => em_utils:md5_hex(User)
+    },
+    em_processor_user:delete_user(IMSAssociation);
 
 processor(set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -223,30 +258,22 @@ processor(create_trunk, Message) ->
     SipPass = em_utils:get_element_text(SipPassWord),
     PubId = em_utils:get_element_text(LinePort),
     GrpId = em_utils:get_element_text(GroupId),
-    Event=#event{user=UserName, pass=SipPass, pubid=PubId, group=GrpId, sprofile=UserName},
-    em_processor_trunk:create(type_is_pilot(Event));
-
-%processor("GroupTrunkGroupModifyInstanceRequest20sp1", Message, _Ctx) ->
-%    InsideCommand = em_utils:get_element_childs(Message),
-%    [GroupId] = em_utils:get_elements(groupId, InsideCommand),
-%    [SipPassWord] = em_utils:get_elements(sipAuthenticationPassword, InsideCommand),
-
-%    [PilotUser] = em_utils:get_elements(pilotUser, InsideCommand),
-%    [PilotUserId] = em_utils:get_elements(userId, em_utils:get_element_childs(PilotUser)),
-%    [LinePort] = em_utils:get_elements(linePort, em_utils:get_element_childs(PilotUser)),
- 
-%    UserName = em_utils:get_element_text(PilotUserId),
-%    SipPass = em_utils:get_element_text(SipPassWord),
-%    PubId = em_utils:get_element_text(LinePort),
-%    GrpId = em_utils:get_element_text(GroupId),
+             
+    IMSAssociation = #{
+        user        => UserName,
+        pubid       => PubId,
+        group       => GrpId,
+        type        => 'pilot',
+        csprofile   => 'BusinessTrunk',
+        ispsi       => 'false',
+        isdefault   => 'false',
+        irs         => '1',
+        association => em_utils:md5_hex(UserName),
+        phone       => 'NODATA',
+        pass        => SipPass
+    },    
+    em_processor_trunk:create_user(IMSAssociation);
     
-%    io:format(UserName),
-%    io:format(SipPass),
-%    io:format(PubId),
-%    io:format(GrpId);
-
-    %TODO find a way to get the pilot user ID, and update the password of the user. We might not need this event
-    % since the password update can be done via the SIP authentication modify on the pilot user.
 
 processor(delete_group, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -258,7 +285,7 @@ processor(delete_group, Message) ->
         fun(I) ->
             {I1} = I,
             I2 = binary_to_list(I1),
-            em_processor_user:delete(#event{user=I2})
+            em_processor_user:delete_user(#{user=>I2, association=>em_utils:md5_hex(I2)})
         end, Users);
 
 processor(create_domain, Message) ->
@@ -277,84 +304,19 @@ processor(delete_domain, Message) ->
 processor(ignored, _Message) ->
     ok.
 
-
-%% We are updating information in the Event record based on the event type
-type_is_virtual(Event) ->
-    Event#event{type='virtual',
-                  csprofile='IMT_VIRTUAL',
-                  ispsi='true',
-                  isdefault='true',
-                  irs='0'}.
-
-type_is_trunk(Event=#event{user=UserName}) ->  
-    [{Type}] = em_srd:get_type(UserName),
-    CurrentType = binary_to_list(Type),
-    ?INFO_MSG("Current usertype is: ~p", [CurrentType]),
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+fix_nil(Element) ->
+    IsNil =  em_utils:get_element_attributes('xsi:nil', Element) =:= "true",
+    Text = em_utils:get_element_text(Element),    
     
-    Event#event{type='trunk',
-                  csprofile='BusinessTrunk_wild',
-                  ispsi='true',
-                  isdefault='true',
-                  irs='0',
-                  pass=randchar(14),
-                  current_type=CurrentType}.
-
-type_is_user(Event) ->
-    Event#event{type='user',
-                  csprofile='IMS_CENTREX',
-                  ispsi='false',
-                  isdefault='false',
-                  irs='1',
-                  pass=randchar(14),
-                  current_type='user'}.      
-
-
-type_user(Event=#event{user=UserName}) ->
-    [{Type}] = em_srd:get_type(UserName),
-    CurrentType = binary_to_list(Type),
-
-    Event#event{type='user',
-                  csprofile='IMS_CENTREX',
-                  ispsi='false',
-                  isdefault='false',
-                  irs='1',
-                  pass=randchar(14),
-                  current_type=CurrentType}.      
-
-
-type_is_pilot(Event) ->
-    Event#event{type='pilot',
-                  csprofile='BusinessTrunk',
-                  ispsi='false',
-                  isdefault='false',
-                  irs='1'}.  
-
-nil_fix(undefined, false) ->
-    undefined;
-nil_fix(undefined, true) ->
-    nil;
-nil_fix(X, _) ->
-    X.
-
-
-% We use this to create a temporarily SIP password. The password is later
-% overwritten by an seperate event (not for virtual users, the password remains).
-randchar(N) ->
-   randchar(N, []).
-   
-randchar(0, Acc) ->
-   Acc;
-randchar(N, Acc) ->
-   randchar(N - 1, [rand:uniform(26) + 96 | Acc]).      
-   
-   
-% This fix is made because we are adding a default pubud to users, before 
-% the pubId is added via CommPilot
-fix_undefined(UserName, undefined) ->
-    UserName;
-fix_undefined(_UserName, PubId) ->
-    PubId.        
-
+    case {Text, IsNil} of
+        {undefined, false} -> undefined;
+        {undefined, true} -> nil;
+        _ -> Text
+    end.
+         
 %% mapping various OCI-R events to functions
 processors() ->
     #{  
@@ -382,8 +344,8 @@ processors() ->
         "SystemDomainDeleteRequest" => delete_domain
     }.
 
-%% The OCI-R event contains the city name, here we translate
-%% to the phonecontext used in the HSS
+% The OCI-R event contains the city name, here we translate
+% to the phonecontext used in the HSS
 phonecontexts() ->
     #{
         "Nuuk" => "nuk.tg.gl",
@@ -406,5 +368,4 @@ phonecontexts() ->
         "Alaska" =>"ala.tg.gl"
     }.
     
-
         

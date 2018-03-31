@@ -45,23 +45,23 @@
 %%% API
 %%%===================================================================
 
-create_hss_subscriber(User) ->
-	gen_server:call(?SERVER, {create_hss_subscriber, User}).
+create_hss_subscriber(IMSAssociation) ->
+	gen_server:call(?SERVER, {create_hss_subscriber, IMSAssociation}).
 
-create_hss_virtual_subscriber(User) ->
-	gen_server:call(?SERVER, {create_hss_virtual_subscriber, User}).
+create_hss_virtual_subscriber(IMSAssociation) ->
+	gen_server:call(?SERVER, {create_hss_virtual_subscriber, IMSAssociation}).
 
-create_hss_serviceprofile(User) ->
-	gen_server:call(?SERVER, {create_hss_serviceprofile, User}).
+create_hss_serviceprofile(IMSAssociation) ->
+	gen_server:call(?SERVER, {create_hss_serviceprofile, IMSAssociation}).
 
-create_hss_pubid(User) ->
-	gen_server:call(?SERVER, {create_hss_pubid, User}).
+create_hss_pubid(IMSAssociation) ->
+	gen_server:call(?SERVER, {create_hss_pubid, IMSAssociation}).
 
-create_hss_teluri(User) ->
-	gen_server:call(?SERVER, {create_hss_teluri, User}).
+create_hss_teluri(IMSAssociation) ->
+	gen_server:call(?SERVER, {create_hss_teluri, IMSAssociation}).
 
-delete_hss_subscriber(User) ->
-	gen_server:call(?SERVER, {delete_hss_subscriber, User}).
+delete_hss_subscriber(IMSAssociation) ->
+	gen_server:call(?SERVER, {delete_hss_subscriber, IMSAssociation}).
 
 delete_hss_serviceprofile(User, ServiceProfile) ->
 	gen_server:call(?SERVER, {delete_hss_serviceprofile, User, ServiceProfile}).
@@ -78,8 +78,8 @@ update_hss_pass(User, Pass) ->
 update_hss_phonecontext(User, PhoneContext) ->
 	gen_server:call(?SERVER, {update_hss_phonecontext, User, PhoneContext}).
 
-create_enum(User) ->
-	gen_server:call(?SERVER, {create_enum, User}).
+create_enum(IMSAssociation) ->
+	gen_server:call(?SERVER, {create_enum, IMSAssociation}).
 
 delete_enum(Phone) ->
 	gen_server:call(?SERVER, {delete_enum, Phone}).
@@ -129,53 +129,43 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({create_hss_subscriber, User}, _From, State) ->
+handle_call({create_hss_subscriber, IMSAssociation}, _From, State) ->
     Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:add_ims_subscriber(Session, User),
+    Request = em_interface_cai3g_envelopes:add_ims_subscriber(Session, IMSAssociation),
     {ok, _} = send(Request, State),
-    
-    % This is a workaround, investigate with Ericsson why
-    Request1 = em_interface_cai3g_envelopes:add_ims_pubid(Session, User),
-    {ok, _} = send(Request1, State),
-    close_session(Session, State),
     {reply, ok, State};
     
-handle_call({create_hss_virtual_subscriber, User}, _From, State) ->
-    ?INFO_MSG("Virtual create: ~n", []),
+handle_call({create_hss_virtual_subscriber, IMSAssociation}, _From, State) ->
     Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:add_ims_virtual_subscriber(Session, User),
-    {ok, _} = send(Request, State),
-    
-    % This is a workaround, investigate with Ericsson why
-    Request1 = em_interface_cai3g_envelopes:add_ims_pubid(Session, User),
-    {ok, _} = send(Request1, State),
-    close_session(Session, State),
-    {reply, ok, State};
-    
-handle_call({create_hss_serviceprofile, User}, _From, State) ->
-    Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:add_ims_serviceprofile(Session, User),
-    {ok, _} = send(Request, State),
-    close_session(Session, State),
-    {reply, ok, State};
-    
-handle_call({create_hss_pubid, User}, _From, State) ->
-    Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:add_ims_pubid(Session, User),
-    {ok, _} = send(Request, State),
-    close_session(Session, State),
-    {reply, ok, State};
-    
-handle_call({create_hss_teluri, User}, _From, State) ->
-    Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:add_ims_teluri(Session, User),
+    Request = em_interface_cai3g_envelopes:add_ims_virtual_subscriber(Session, IMSAssociation),
     {ok, _} = send(Request, State),
     close_session(Session, State),
     {reply, ok, State};
 
-handle_call({delete_hss_subscriber, User}, _From, State) ->
+handle_call({create_hss_serviceprofile, IMSAssociation}, _From, State) ->
     Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:delete_ims_subscriber(Session, User),
+    Request = em_interface_cai3g_envelopes:add_ims_serviceprofile(Session, IMSAssociation),
+    {ok, _} = send(Request, State),
+    close_session(Session, State),
+    {reply, ok, State};
+
+handle_call({create_hss_pubid, IMSAssociation}, _From, State) ->
+    Session = open_session(State),
+    Request = em_interface_cai3g_envelopes:add_ims_pubid(Session, IMSAssociation),
+    {ok, _} = send(Request, State),
+    close_session(Session, State),
+    {reply, ok, State};
+
+handle_call({create_hss_teluri, IMSAssociation}, _From, State) ->
+    Session = open_session(State),
+    Request = em_interface_cai3g_envelopes:add_ims_teluri(Session, IMSAssociation),
+    {ok, _} = send(Request, State),
+    close_session(Session, State),
+    {reply, ok, State};
+
+handle_call({delete_hss_subscriber, IMSAssociation}, _From, State) ->
+    Session = open_session(State),
+    Request = em_interface_cai3g_envelopes:delete_ims_subscriber(Session, IMSAssociation),
     {ok, _} = send(Request, State),
     close_session(Session, State),
     {reply, ok, State};
@@ -215,9 +205,9 @@ handle_call({update_hss_phonecontext, User, PhoneContext}, _From, State) ->
     close_session(Session, State),
     {reply, ok, State};
 
-    handle_call({create_enum, User}, _From, State) ->
-   Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:add_ims_enum(Session, User),
+    handle_call({create_enum, IMSAssociation}, _From, State) ->
+    Session = open_session(State),
+    Request = em_interface_cai3g_envelopes:add_ims_enum(Session, IMSAssociation),
     {ok, _} = send(Request, State),
     close_session(Session, State),
     {reply, ok, State};
@@ -291,12 +281,12 @@ code_change(_OldVsn, State, _Extra) ->
 open_session(State=#state{ema_user = User, ema_pass = Pass}) ->
 
     {ok, Session} = em_interface_cai3g_parser:login_response(send(em_interface_cai3g_envelopes:login(User, Pass), State)),
-    ?INFO_MSG("EMA session created: ~p", [Session]),
+    %?INFO_MSG("EMA session created: ~p", [Session]),
     Session.
 
 close_session(Session, State) ->
-    {ok, _} = em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:logout(Session), State)),
-    ?INFO_MSG("EMA session closed: ~p", [Session]).
+    {ok, _} = em_interface_cai3g_parser:logout_response(send(em_interface_cai3g_envelopes:logout(Session), State)).
+    %?INFO_MSG("EMA session closed: ~p", [Session]).
 
 send(Request, #state{ema_host = Host}) ->
     %?INFO_MSG("Sending request: ~p", [lists:flatten(Request)]),

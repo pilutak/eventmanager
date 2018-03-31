@@ -48,24 +48,27 @@ delete_domain(Domain) ->
     do_request(Url).
     %ibrowse:send_req(Url, [], post, [], [{basic_auth, {"admin", "ics5ics5"}}]).
 
-
-modify(#vmevent{mailuser=undefined, mailpass=undefined}) ->
-    ?INFO_MSG("Ignoring (all undefined): ~n", []); 
-
-modify(#vmevent{mailuser=X1, current_mailuser=X1}) ->
-    ?INFO_MSG("Ignoring (mailuser already set): ~n", []);
+modify(IMSAssociation) ->
+    User = maps:get(user, IMSAssociation),
+    MailUser = maps:get(mailuser, IMSAssociation),
+    MailPass = maps:get(mailpass, IMSAssociation),
+    CurrentMailUser = maps:get(current_mailuser, IMSAssociation),
     
-modify(#vmevent{user=UserName, mailuser=X1, current_mailuser=undefined, mailpass=X3}) ->
-    ?INFO_MSG("creating vmail accpount (mailuser not existing): ~n", []),
-    create_account(X1, X3),
-    em_srd:set_vmail(UserName, X1, X3);
-
-modify(#vmevent{mailuser=X1, current_mailuser=X2, mailpass=X3, current_mailpass=X4}) ->
-    ?INFO_MSG("mailuser: ~p", [X1]),
-    ?INFO_MSG("current_mailuser: ~p", [X2]),
-    ?INFO_MSG("mailpass: ~p", [X3]),
-    ?INFO_MSG("current_mailuser: ~p", [X4]).
-    
+    case {MailUser, MailPass, CurrentMailUser} of
+        {undefined, undefined, _} -> 
+            ?INFO_MSG("Ignoring (all undefined): ~n", []), 
+            ok;
+            
+        {X, _, X} -> 
+            ?INFO_MSG("Ignoring (mailuser already set): ~n", []), 
+            ok;
+            
+        {_, _, undefined} -> 
+            ?INFO_MSG("creating vmail accpount (mailuser not existing): ~n", []),
+            create_account(MailUser, MailPass),
+            em_manager_srd:set_vmail(User, MailUser, MailPass)
+    end.
+        
 create_account(MailUser, MailPass) ->
     DomainPass = "ics5ics5",
     

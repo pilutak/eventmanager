@@ -61,7 +61,10 @@ logout(Session) ->
         </soapenv:Body>
     </soapenv:Envelope>",[Session, Session]).
 
-add_ims_subscriber(Session, #event{user=User, pass=Pass, pubid=PubId, csprofile=CSProfile}) ->
+add_ims_subscriber(Session, IMSAssociation) ->
+    User = maps:get(user, IMSAssociation),
+    Pass = maps:get(pass, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -83,20 +86,15 @@ add_ims_subscriber(Session, #event{user=User, pass=Pass, pubid=PubId, csprofile=
                   <hss:userPassword>~s</hss:userPassword>
                   <hss:allowedAuthMechanism>DIGEST</hss:allowedAuthMechanism>
                </hss:privateUser>               
-               <hss:subscriberServiceProfile serviceProfileId=\"~s\">
-                  <hss:serviceProfileId>~s</hss:serviceProfileId>
-                  <hss:configuredServiceProfile configuredServiceProfileId=\"~s\">
-                     <hss:configuredServiceProfileId>~s</hss:configuredServiceProfileId>
-                  </hss:configuredServiceProfile>
-                  <hss:maxNumberSessions>99</hss:maxNumberSessions> 
-               </hss:subscriberServiceProfile>
             </hss:CreateIMSAssociation>
          </cai3:MOAttributes>
       </cai3:Create>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, User, User, User, User, User, Pass, PubId, PubId, CSProfile, CSProfile]).
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, AssociationId, User, User, Pass]).
     
-add_ims_virtual_subscriber(Session, #event{user=User, pubid=PubId, csprofile=CSProfile}) ->
+add_ims_virtual_subscriber(Session, IMSAssociation) ->
+    User = maps:get(user, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),    
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -116,21 +114,21 @@ add_ims_virtual_subscriber(Session, #event{user=User, pubid=PubId, csprofile=CSP
                <hss:privateUser privateUserId=\"~s\">
                   <hss:privateUserId>~s</hss:privateUserId>
                </hss:privateUser>               
-               <hss:subscriberServiceProfile serviceProfileId=\"~s\">
-                  <hss:serviceProfileId>~s</hss:serviceProfileId>
-                  <hss:configuredServiceProfile configuredServiceProfileId=\"~s\">
-                     <hss:configuredServiceProfileId>~s</hss:configuredServiceProfileId>
-                  </hss:configuredServiceProfile>
-                  <hss:maxNumberSessions>99</hss:maxNumberSessions> 
-               </hss:subscriberServiceProfile>
             </hss:CreateIMSAssociation>
          </cai3:MOAttributes>
       </cai3:Create>
    </soapenv:Body>
 </soapenv:Envelope>
-",[Session, User, User, User, User, User, PubId, PubId, CSProfile, CSProfile]).    
-        
-add_ims_teluri(Session, #event{user=User, phone=Phone, pubid=PubId, irs=IRS, isdefault=IsDefault} ) ->
+",[Session, AssociationId, AssociationId, AssociationId, User, User]).    
+
+add_ims_teluri(Session, IMSAssociation) ->
+    User = maps:get(user, IMSAssociation),
+    PubId = maps:get(pubid, IMSAssociation),
+    Phone = maps:get(phone, IMSAssociation),
+    IRS = maps:get(irs, IMSAssociation),
+    IsDefault = maps:get(isdefault, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation), 
+    
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -156,7 +154,8 @@ add_ims_teluri(Session, #event{user=User, phone=Phone, pubid=PubId, irs=IRS, isd
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-  </soapenv:Envelope>",[Session, User, User, Phone, Phone, User, IRS, IsDefault, PubId]).   
+  </soapenv:Envelope>",[Session, AssociationId, AssociationId, Phone, Phone, User, IRS, IsDefault, PubId]).   
+
     
 delete_ims_teluri(Session, User, Phone) ->
     io_lib:format(
@@ -179,7 +178,8 @@ delete_ims_teluri(Session, User, Phone) ->
    </soapenv:Body>
 </soapenv:Envelope>",[Session, User, User, Phone]).
 
-delete_ims_subscriber(Session, UserName) ->
+delete_ims_subscriber(Session, IMSAssociation) ->
+    AssociationId = maps:get(association, IMSAssociation),  
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -193,9 +193,15 @@ delete_ims_subscriber(Session, UserName) ->
          </cai3:MOId>
       </cai3:Delete>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, UserName]).
+</soapenv:Envelope>",[Session, AssociationId]).
     
-add_ims_pubid(Session, #event{user=User, pubid=PubId, irs=IRS, isdefault=IsDefault, sprofile=SProfile}) ->
+add_ims_pubid(Session, IMSAssociation) ->
+    User = maps:get(user, IMSAssociation),
+    PubId = maps:get(pubid, IMSAssociation),
+    IRS = maps:get(irs, IMSAssociation),
+    IsDefault = maps:get(isdefault, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),
+    SProfile = PubId,
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -221,9 +227,10 @@ add_ims_pubid(Session, #event{user=User, pubid=PubId, irs=IRS, isdefault=IsDefau
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, User, User, PubId, PubId, User, IRS, IsDefault, SProfile]).    
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, PubId, PubId, User, IRS, IsDefault, SProfile]).    
+
      
-delete_ims_pubid(Session, User, Phone) ->
+delete_ims_pubid(Session, AssociationId, CurrentPubId) ->
      io_lib:format(
      "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
     <soapenv:Header>
@@ -242,9 +249,14 @@ delete_ims_pubid(Session, User, Phone) ->
           </cai3:MOAttributes>
        </cai3:Set>
     </soapenv:Body>
- </soapenv:Envelope>",[Session, User, User, Phone]).
+ </soapenv:Envelope>",[Session, AssociationId, AssociationId, CurrentPubId]).
 
-add_ims_serviceprofile(Session, #event{user=User, sprofile=SProfile, csprofile=CSProfile}) ->
+add_ims_serviceprofile(Session, IMSAssociation) ->
+    PubId = maps:get(pubid, IMSAssociation),
+    SProfile = PubId,
+    CSProfile = maps:get(csprofile, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),
+    
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
    <soapenv:Header>
@@ -268,9 +280,9 @@ add_ims_serviceprofile(Session, #event{user=User, sprofile=SProfile, csprofile=C
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, User, User, SProfile, SProfile, CSProfile, CSProfile]).
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, SProfile, SProfile, CSProfile, CSProfile]).
 
-delete_ims_serviceprofile(Session, User, SProfile) ->
+delete_ims_serviceprofile(Session, AssociationId, SProfile) ->
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
    <soapenv:Header>
@@ -290,9 +302,11 @@ delete_ims_serviceprofile(Session, User, SProfile) ->
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, User, User, SProfile]).
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, SProfile]).
 
-add_ims_enum(Session, #event{phone=Phone, pubid=PubId}) ->
+add_ims_enum(Session, IMSAssociation) ->
+    PubId = maps:get(pubid, IMSAssociation),
+    Phone = maps:get(phone, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:ns=\"http://schemas.ericsson.com/ema/UserProvisioning/IPWorks/5.0/\"> 
    <soapenv:Header> 

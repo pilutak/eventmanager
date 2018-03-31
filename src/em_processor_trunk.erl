@@ -14,127 +14,299 @@
 
 -module(em_processor_trunk).
 
--export([create/1, delete/1, modify/1]).
+-export([create_user/1,create_trunk_user/1, delete_user/1, modify_user/1, modify_trunk_user/1]).
 -include("../include/em.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-create(Event) ->
-    ?INFO_MSG("Creating user: ~n", []),
-    em_ema_server:create_hss_virtual_subscriber(Event),
-    {ok, _} = em_srd:add_user(Event).     
+create_user(IMSAssociation) ->
+    ?INFO_MSG("Creating user: ~p", [maps:get(user, IMSAssociation)]),
+    ok = em_srd:create_user(IMSAssociation),
+    ok = em_ema_server:create_hss_subscriber(IMSAssociation),
+    ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+    ok = em_ema_server:create_hss_pubid(IMSAssociation),
     
-delete(#event{user=UserName}) ->
-    ?INFO_MSG("Deleting user: ~n", []),
-    [{CurrentPhone}] = em_srd:get_e164(UserName),
+    case maps:get(phone, IMSAssociation) of
+        'NODATA' -> ok;
+        _ -> ok = em_srd:set_e164(IMSAssociation),
+             ok = em_ema_server:create_hss_teluri(IMSAssociation),
+             ok = em_ema_server:create_enum(IMSAssociation)
+    end.
 
-    CurrentPhone1 = binary_to_list(CurrentPhone),
-    
-        case CurrentPhone1 of
-            "NODATA" ->
-               em_ema_server:delete_hss_subscriber(UserName),
-               {ok, _} = em_srd:delete_user(UserName);
-           
-            _ ->
-                em_ema_server:delete_enum(CurrentPhone1),
-                em_ema_server:delete_hss_subscriber(UserName),
-                {ok, _} = em_srd:delete_user(UserName)
-        end.
+create_trunk_user(IMSAssociation) ->
+    ?INFO_MSG("Creating trunk user: ~p", [maps:get(user, IMSAssociation)]),
+    ok = em_srd:create_user(IMSAssociation),
+    ok = em_ema_server:create_hss_virtual_subscriber(IMSAssociation),
+    ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+    ok = em_ema_server:create_hss_pubid(IMSAssociation).
 
+delete_user(IMSAssociation) ->
+    ?INFO_MSG("Deleting user: ~p", [maps:get(user, IMSAssociation)]),
+    CurrentPhone = em_srd:get_e164(IMSAssociation),
     
-modify(Event=#event{current_type="user"}) ->
-    ?INFO_MSG("Changing user type to trunk: ~n", []),
-    delete(Event),
-    create(Event),
+    case CurrentPhone of
+        "NODATA" -> ok;           
+        _ ->
+            ok = em_ema_server:delete_enum(CurrentPhone)
+    end,
     
-    %TODO: We must also re-create phone before performing modify
-    modify(Event#event{current_type=trunk});
+    ok = em_srd:delete_user(IMSAssociation),
+    ok = em_ema_server:delete_hss_subscriber(IMSAssociation).
     
-modify(#event{user=X1, pubid=X1, phone=nil, current_pubid=X1, current_phone="NODATA"}) ->
-    ?INFO_MSG("Ignoring ~n", []);
+modify_trunk_user(IMSAssociation) ->
+    ?INFO_MSG("Modifying user: ~p", [maps:get(user, IMSAssociation)]),    
+    CurrentUserType = em_srd:get_type(IMSAssociation),
+    User = maps:get(user, IMSAssociation),
+    Group = em_srd:get_group(User),
     
-modify(#event{user=Z1, pubid=Z1, phone=nil, current_pubid=Z1, current_phone="NODATA"}) ->
-    ?INFO_MSG("Ignoring, all default)~n", []);
+    case CurrentUserType of
+        "user" -> 
+            ?INFO_MSG("Changing user type to trunk: ~n", []),
+            delete_user(IMSAssociation),
+            IMSAssociation1 = maps:put(group, Group, IMSAssociation),
+            create_trunk_user(IMSAssociation1),
+            modify_user(IMSAssociation1);
+        "trunk" -> ?INFO_MSG("Already user type trunk: ~n", []),
+                modify_user(IMSAssociation)
+    end.
+    
+modify_user(IMSAssociation) ->
+    ?INFO_MSG("Modifying user: ~p", [maps:get(user, IMSAssociation)]),    
+    CurrentPubId = em_srd:get_sipuri(IMSAssociation),
+    CurrentPhone = em_srd:get_e164(IMSAssociation),
+       
+    User = maps:get(user, IMSAssociation),
+    AssId = maps:get(association, IMSAssociation),
+    PubId = maps:get(pubid, IMSAssociation),
+    Phone = maps:get(phone, IMSAssociation),
 
-modify(#event{user=_Z1, pubid=X1, phone=nil, current_pubid=X1, current_phone="NODATA"}) ->
-    ?INFO_MSG("Ignoring no change to pubid, no phone()~n", []);  
+    PubIdAction = plan_pubid_change(PubId, CurrentPubId, User),
+    PhoneAction = plan_phone_change(Phone, CurrentPhone),
 
-modify(#event{user=Z1, pubid=Z1, phone=undefined, current_pubid=Z1, current_phone="NODATA"}) ->
-    ?INFO_MSG("Ignoring))~n", []);
+    case {PubIdAction, PhoneAction} of
+        {ignore, ignore} -> ?INFO_MSG("No planned change for user: ~p", [User]);
+        {ignore, delete} -> ?INFO_MSG("Deleting phone: ~p from user: ~p", [CurrentPhone, User]),
+                            ok = em_srd:delete_e164(User),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone);
+                            
+        {ignore, create} when PubId /= nil -> 
+                            ?INFO_MSG("Creating phone: ~p for user ~p", [Phone, User]),
+                            ok = em_srd:set_e164(IMSAssociation),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation),
+                            ok = em_ema_server:create_enum(IMSAssociation);
 
-modify(#event{user=Z1, pubid=Z1, phone=X1, current_pubid=Z1, current_phone=X1}) ->
-    ?INFO_MSG("Ignoring no change to phone()~n", []);  
+        {ignore, create} when PubId == nil -> 
+                            ?INFO_MSG("Creating phone: ~p for user ~p", [Phone, User]),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_e164(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);
+                            
+        {ignore, update} when PubId /= nil -> 
+                            ?INFO_MSG("Updating phone: ~p to ~p for user: ~p", [CurrentPhone, Phone, User]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_srd:set_e164(IMSAssociation),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation),
+                            ok = em_ema_server:create_enum(IMSAssociation);
 
-modify(#event{user=Z1, pubid=X1, current_pubid=X1, phone=nil, current_phone=X2}) ->
-    ?INFO_MSG("Delete phone (no pubid change))~n", []),
-    em_ema_server:delete_enum(X2),
-    em_ema_server:delete_hss_teluri(Z1, X2),
-    em_srd:delete_e164(Z1);
-    
-modify(Event=#event{user=Z1, pubid=_X1, current_pubid=X2, phone=nil, current_phone="NODATA"}) ->
-    ?INFO_MSG("Update pubId )~n", []),
-    em_ema_server:delete_hss_pubid(Z1, X2),
-    em_ema_server:delete_hss_serviceprofile(Z1, X2),
-    em_srd:set_sipuri(Event),
-    em_ema_server:create_hss_serviceprofile(Event),
-    em_ema_server:create_hss_pubid(Event);
-           
-modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phone="NODATA"}) ->
-    ?INFO_MSG("Create phone on default pubid (no change to PubID))~n", []),
-    em_srd:set_e164(Event),
-    em_ema_server:create_hss_teluri(Event),
-    em_ema_server:create_enum(Event);
-    
-modify(#event{user=Z1, pubid=Z1, phone=nil, current_pubid=Z1, current_phone=X2}) ->
-    ?INFO_MSG("Delete phone on default pubid (no change to PubID))~n", []),
-    em_ema_server:delete_enum(X2),
-    em_ema_server:delete_hss_teluri(Z1, X2),
-    em_srd:delete_e164(Z1);
-    
-modify(Event=#event{user=Z1, pubid=Z1, phone=_X1, current_pubid=Z1, current_phone=X2}) ->
-    ?INFO_MSG("Update phone on default pubid (no change to PubID))~n", []),
-    em_ema_server:delete_enum(X2),
-    em_ema_server:delete_hss_teluri(Z1, X2),
-    em_srd:set_e164(Event),
-    em_ema_server:create_hss_teluri(Event),
-    em_ema_server:create_enum(Event);
+        {ignore, update} when PubId == nil -> 
+                            ?INFO_MSG("Updating phone: ~p to ~p for user: ~p", [CurrentPhone, Phone, User]),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_srd:set_e164(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);
+            
+        {delete, ignore} when CurrentPhone /= "NODATA" -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to user: ~p", [CurrentPubId, User]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);        
+
+        {delete, ignore} when CurrentPhone == "NODATA" -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to user: ~p", [CurrentPubId, User]),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1);      
         
-modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_phone="NODATA"}) ->
-    ?INFO_MSG("Create phone on new pubId ~n", []),
-    em_ema_server:delete_hss_pubid(Z1, X2),
-    em_ema_server:delete_hss_serviceprofile(Z1, X2),
-    em_srd:set_sipuri(Event),
-    em_srd:set_e164(Event),
-    em_ema_server:create_hss_serviceprofile(Event),
-    em_ema_server:create_hss_pubid(Event),
-    em_ema_server:create_hss_teluri(Event),
-    em_ema_server:create_enum(Event);
+        {delete, delete} -> ?INFO_MSG("Deleting pubid: ~p, then set to user, deleting phone: ~p", [CurrentPubId, CurrentPhone]),
+                            ok = em_srd:delete_e164(User),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1);        
+                
+        {delete, create} -> ?INFO_MSG("Deleting pubid: ~p ,then set to user, create phone: ~p", [CurrentPubId, Phone]),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1),       
+                            ok = em_srd:set_e164(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);
+        
+        {delete, update} -> ?INFO_MSG("Deleting pubid: ~p, then set to user, deleting phone: ~p, creating phone: ~p", [CurrentPubId, CurrentPhone, Phone]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1),        
+                            ok = em_srd:set_e164(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);
 
-modify(Event=#event{user=Z1, pubid=_X1, phone=nil, current_pubid=X2, current_phone=X3}) ->
-    ?INFO_MSG("Delete phone on new pubId ~n", []),
-    em_ema_server:delete_enum(X3),
-    em_ema_server:delete_hss_teluri(Z1, X3),
-    em_ema_server:delete_hss_pubid(Z1, X2),
-    em_ema_server:delete_hss_serviceprofile(Z1, X2),
-    em_srd:set_sipuri(Event),
-    em_srd:delete_e164(Z1),
-    em_ema_server:create_hss_serviceprofile(Event),
-    em_ema_server:create_hss_pubid(Event);
+        % special workaround for users where device is set to "none"
+        {update, ignore} when CurrentPhone /= "NODATA" andalso PubId == undefined -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, keeping phone",[CurrentPubId, maps:get(user, IMSAssociation)]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);
+                
+        {update, ignore} when CurrentPhone /= "NODATA" -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, keeping phone",[CurrentPubId, maps:get(pubid, IMSAssociation)]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            ok = em_srd:set_sipuri(IMSAssociation),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation),
+                            ok = em_ema_server:create_enum(IMSAssociation);
 
-modify(Event=#event{user=Z1, pubid=_X1, phone=_Y1, current_pubid=X2, current_phone=X3}) ->
-    ?INFO_MSG("Update phone on new pubId ~n", []),
-    em_ema_server:delete_enum(X3),
-    em_ema_server:delete_hss_teluri(Z1, X3),
-    em_ema_server:delete_hss_pubid(Z1, X2),
-    em_ema_server:delete_hss_serviceprofile(Z1, X2),
-    em_srd:set_sipuri(Event),
-    em_srd:set_e164(Event),
-    em_ema_server:create_hss_serviceprofile(Event),
-    em_ema_server:create_hss_pubid(Event),
-    em_ema_server:create_hss_teluri(Event),
-    em_ema_server:create_enum(Event);
-    
-modify(_) ->
-    ?ERROR_MSG("Invalid Event record state: ~n", []).    
+        % special workaround for users where device is set to "none"
+        {update, ignore} when CurrentPhone == "NODATA" andalso PubId == undefined -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p",[CurrentPubId, maps:get(user, IMSAssociation)]),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1);
 
+        {update, ignore} when CurrentPhone == "NODATA" -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p",[CurrentPubId, maps:get(pubid, IMSAssociation)]),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            ok = em_srd:set_sipuri(IMSAssociation),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation);
+        % fix for users
+        {update, delete} when PubId == undefined ->
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, deleting phone: ~p", [CurrentPubId, PubId, CurrentPhone]),
+                            ok = em_srd:delete_e164(User),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1);        
+        % fix for users
+        {update, delete} when PubId /= undefined ->
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, deleting phone: ~p", [CurrentPubId, PubId, CurrentPhone]),
+                            ok = em_srd:delete_e164(User),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            ok = em_srd:set_sipuri(IMSAssociation),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation);        
+        
+        {update, create} -> ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, creating phone: ~p", [CurrentPubId, PubId, Phone]),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            ok = em_srd:set_sipuri(IMSAssociation),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation),      
+                            ok = em_srd:set_e164(IMSAssociation),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation),
+                            ok = em_ema_server:create_enum(IMSAssociation);
+        % fix for users
+        {update, update} when PubId == undefined ->
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, deleting phone: ~p, creating phone: ~p", [CurrentPubId, PubId, CurrentPhone, Phone]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            IMSAssociation1 = maps:update(pubid, User, IMSAssociation),
+                            ok = em_srd:set_sipuri(IMSAssociation1),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation1),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation1),        
+                            ok = em_srd:set_e164(IMSAssociation1),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation1),
+                            ok = em_ema_server:create_enum(IMSAssociation1);
+        % fix for users
+        {update, update} when PubId /= undefined -> 
+                            ?INFO_MSG("Deleting pubid: ~p, then set to new pubid: ~p, deleting phone: ~p, creating phone: ~p", [CurrentPubId, PubId, CurrentPhone, Phone]),
+                            ok = em_ema_server:delete_enum(CurrentPhone),
+                            ok = em_ema_server:delete_hss_teluri(AssId, CurrentPhone),
+                            ok = em_ema_server:delete_hss_pubid(AssId, CurrentPubId),
+                            ok = em_ema_server:delete_hss_serviceprofile(AssId, CurrentPubId),
+                            ok = em_srd:set_sipuri(IMSAssociation),
+                            ok = em_ema_server:create_hss_serviceprofile(IMSAssociation),
+                            ok = em_ema_server:create_hss_pubid(IMSAssociation),        
+                            ok = em_srd:set_e164(IMSAssociation),
+                            ok = em_ema_server:create_hss_teluri(IMSAssociation),
+                            ok = em_ema_server:create_enum(IMSAssociation);
+        
+        Err -> ?ERROR_MSG("Error: ~p", [Err])
+    end.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+plan_pubid_change(nil, _X, _X) ->
+    ignore;
+plan_pubid_change(nil, _X, _Y) ->
+    delete;
+plan_pubid_change(X, X, _) ->
+    ignore;
+plan_pubid_change(_X, _Y, _) ->
+    update.
+
+plan_phone_change(nil, "NODATA") ->
+    ignore;
+plan_phone_change(nil, _Y) ->
+    delete;
+plan_phone_change(undefined, _Y) ->
+    delete;
+plan_phone_change(X, X) ->
+    ignore;
+plan_phone_change(_X, "NODATA") ->
+    create;
+plan_phone_change(_X, _Y) ->
+    update.    
