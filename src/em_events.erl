@@ -43,7 +43,8 @@ processor(create_service, Message) ->
         association => em_utils:md5_hex(User),
         phone       => "NODATA"
     },
-    ok = em_processor_service:create_user(Event);
+    %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event);
 
 processor(modify_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -69,7 +70,7 @@ processor(modify_service, Message) ->
     % if the PubId field is present, if not, the request is ignored.
     case fix_nil(PublicUserIdentity) of
         undefined -> ok;
-        _ -> ok = em_processor_service:modify_user(Event)
+        _ -> ok = em_manager_hss:modify_user(Event)
         
     end;
         
@@ -97,10 +98,10 @@ processor(modify_group_vp, Message) ->
     
     case em_srd:user_exists(User) of
         false ->
-            em_processor_service:create_user(Event);
+            em_manager_hss:create_user(Event);
             
         true ->
-            em_processor_service:modify_user(Event)
+            em_manager_hss:modify_user(Event)
     end;
 
 processor(modify_user_vm, Message) ->
@@ -142,7 +143,7 @@ processor(create_user, Message) ->
         phone       => "NODATA",
         pass        => em_utils:randchar(14)
     },
-    ok = em_processor_user:create_user(Event);
+    ok = em_manager_hss:create_user(Event);
     
     
 processor(modify_user, Message) ->
@@ -180,7 +181,7 @@ processor(modify_user, Message) ->
                 association => em_utils:md5_hex(UserName),
                 phonecontext => PhoneContext
             }, 
-            em_processor_user:set_phonecontext(ContextEvent)
+            em_manager_hss:set_phonecontext(ContextEvent)
     end,
 
     case TrunkLinePort of
@@ -200,7 +201,7 @@ processor(modify_user, Message) ->
                   association => em_utils:md5_hex(UserName),
                   sprofile    => fix_nil(L)
               },
-              em_processor_user:modify_user(Event);
+              em_manager_hss:modify_user(Event);
                   
          _  -> 
              ?INFO_MSG("Modify trunk user~n", []),
@@ -216,7 +217,7 @@ processor(modify_user, Message) ->
                  association => em_utils:md5_hex(UserName),
                  sprofile    => fix_nil(LP)
              },
-             em_processor_trunk:modify_user(Event1)
+             em_manager_hss:modify_trunk_user(Event1)
              
      end;  
          
@@ -230,7 +231,7 @@ processor(delete_service, Message) ->
         user => User,
         association => em_utils:md5_hex(User)
     },
-    em_processor_service:delete_user(Event);
+    em_manager_hss:delete_user(Event);
 
 processor(delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -241,7 +242,7 @@ processor(delete_user, Message) ->
         user => User,
         association => em_utils:md5_hex(User)
     },
-    em_processor_user:delete_user(Event);
+    em_manager_hss:delete_user(Event);
 
 processor(set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -255,7 +256,7 @@ processor(set_password, Message) ->
         association => em_utils:md5_hex(UserName),
         pass => Pass
     },
-    em_processor_user:set_password(Event);
+    em_manager_hss:set_password(Event);
     
 processor(create_trunk, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -282,7 +283,8 @@ processor(create_trunk, Message) ->
         phone       => "NODATA",
         pass        => SipPass
     },    
-    em_processor_trunk:create_user(Event);
+    %em_processor_trunk:create_user(Event);
+    em_manager_hss:create_user(Event);
     
 
 processor(delete_group, Message) ->
