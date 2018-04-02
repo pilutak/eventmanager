@@ -290,7 +290,8 @@ processor(delete_group, Message) ->
     [G] = em_utils:get_elements(groupId, InsideCommand),
     GroupId = em_utils:get_element_text(G),
     Users = em_srd:get_users(GroupId),
-
+    
+    ?INFO_MSG("Deleting all users in group: ~p~n", [GroupId]),
     lists:foreach(
         fun(I) ->
             {I1} = I,
