@@ -313,5 +313,26 @@ plan_phone_change(_X, _Y) ->
     update.   
    
    
-   
+%%%===================================================================
+%%% Unit Tests
+%%%===================================================================
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+plan_pubid_change_test_() ->
+    [?_assert(plan_pubid_change(nil, "user@tz4.com", "user@tz4.com") =:= ignore),
+     ?_assert(plan_pubid_change(nil, "hello@tz4.com", "user@tz4.com") =:= delete),
+     ?_assert(plan_pubid_change("hello@tz4.com", "hello@tz4.com", "user@tz4.com") =:= ignore),
+     ?_assert(plan_pubid_change("hello@tz4.com", "world@tz4.com", "user@tz4.com") =:= update)
+    ].
+    
+ plan_phone_change_test_() ->
+    [?_assert(plan_phone_change(nil, "NODATA") =:= ignore),
+     ?_assert(plan_phone_change(nil, "299123456") =:= delete),
+     ?_assert(plan_phone_change(undefined, "299123456") =:= delete),     
+     ?_assert(plan_phone_change("299123456", "299123456") =:= ignore),
+     ?_assert(plan_phone_change("299123456", "NODATA") =:= create),
+     ?_assert(plan_phone_change("299123456", "111111") =:= update)
+    ].
+-endif.       
    
