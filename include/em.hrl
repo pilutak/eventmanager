@@ -12,6 +12,11 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
+%% Serviceprofiles must be changes to match the HSS configuration
+-define(SERVICEPROFILE, 'IMT_VIRTUAL').
+-define(CENTREXPROFILE, 'IMS_CENTREX').
+-define(TRUNKPROFILE_DDI, 'BusinessTrunk_wild').
+-define(SIPTRUNKPROFILE_PILOT, 'BusinessTrunk').
 
 -define(ERROR_MSG(Format, Args),
 	error_logger:error_msg("(~p:~p:~p) " ++ Format,
@@ -20,25 +25,7 @@
 -define(INFO_MSG(Format, Args),
 	error_logger:info_msg("(~p:~p:~p) " ++ Format,
 			       [self(), ?MODULE, ?LINE | Args])).
-                   
--define(EMA_URL,
-  case application:get_env(em, ema) of
-    undefined -> "http://localhost:8998";
-    {ok,{URL, _User, _Pass}} -> URL
-  end).
-
--define(EMA_USER,
-  case application:get_env(em, ema) of
-    undefined -> "user";
-    {ok,{_URL, User, _Pass}} -> User
-  end).
-
--define(EMA_PASS,
-  case application:get_env(em, ema) of
-    undefined -> "password";
-    {ok,{_URL, _User, Pass}} -> Pass
-  end).
-  
+                     
 -define(VMAIL_URL,
   case application:get_env(em, vmail) of
     undefined -> "http://localhost:7026";

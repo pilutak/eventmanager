@@ -47,7 +47,7 @@ init(Parent, Host) ->
     process_flag(trap_exit, true),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     register(list_to_atom(Host),self()),
-    connect(#state{socket = undefined, host = Host, ema_url = ?EMA_URL, ema_user = ?EMA_USER, ema_pass = ?EMA_PASS}).
+    connect(#state{socket = undefined, host = Host}).
 
 
 connect(State=#state{host=Host}) ->

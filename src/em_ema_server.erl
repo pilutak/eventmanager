@@ -26,8 +26,8 @@
 -export([delete_hss_serviceprofile/2]).
 -export([delete_hss_pubid/2]).
 -export([delete_hss_teluri/2]).
--export([update_hss_pass/2]).
--export([update_hss_phonecontext/2]).
+-export([update_hss_pass/1]).
+-export([update_hss_phonecontext/1]).
 -export([create_enum/1]).
 -export([delete_enum/1]).
 
@@ -70,11 +70,11 @@ delete_hss_pubid(User, PubId) ->
 delete_hss_teluri(User, Phone) ->
 	gen_server:call(?SERVER, {delete_hss_teluri, User, Phone}).
 
-update_hss_pass(User, Pass) ->
-	gen_server:call(?SERVER, {update_hss_pass, User, Pass}).
+update_hss_pass(IMSAssociation) ->
+	gen_server:call(?SERVER, {update_hss_pass, IMSAssociation}).
 
-update_hss_phonecontext(User, PhoneContext) ->
-	gen_server:call(?SERVER, {update_hss_phonecontext, User, PhoneContext}).
+update_hss_phonecontext(IMSAssociation) ->
+	gen_server:call(?SERVER, {update_hss_phonecontext, IMSAssociation}).
 
 create_enum(IMSAssociation) ->
 	gen_server:call(?SERVER, {create_enum, IMSAssociation}).
@@ -189,16 +189,16 @@ handle_call({delete_hss_teluri, User, Phone}, _From, State) ->
     close_session(Session, State),
     {reply, ok, State};
 
-handle_call({update_hss_pass, User, Pass}, _From, State) ->
+handle_call({update_hss_pass, IMSAssociation}, _From, State) ->
     Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:set_ims_pass(Session, User, Pass),
+    Request = em_interface_cai3g_envelopes:set_ims_pass(Session, IMSAssociation),
     {ok, _} = send(Request, State),
     close_session(Session, State),
     {reply, ok, State};
 
-handle_call({update_hss_phonecontext, User, PhoneContext}, _From, State) ->
+handle_call({update_hss_phonecontext, IMSAssociation}, _From, State) ->
     Session = open_session(State),
-    Request = em_interface_cai3g_envelopes:set_ims_phonecontext(Session, User, PhoneContext),
+    Request = em_interface_cai3g_envelopes:set_ims_phonecontext(Session, IMSAssociation),
     {ok, _} = send(Request, State),
     close_session(Session, State),
     {reply, ok, State};

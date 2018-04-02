@@ -29,8 +29,8 @@
     delete_ims_serviceprofile/3,
     add_ims_enum/2,
     delete_ims_enum/2,
-    set_ims_pass/3,
-    set_ims_phonecontext/3
+    set_ims_pass/2,
+    set_ims_phonecontext/2
     ]).
     
 %%%===================================================================
@@ -63,8 +63,11 @@ logout(Session) ->
 
 add_ims_subscriber(Session, IMSAssociation) ->
     User = maps:get(user, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),  
+    PubId = maps:get(pubid, IMSAssociation), 
+    IRS = maps:get(irs, IMSAssociation),   
+    CSProfile = maps:get(csprofile, IMSAssociation),
     Pass = maps:get(pass, IMSAssociation),
-    AssociationId = maps:get(association, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -85,16 +88,33 @@ add_ims_subscriber(Session, IMSAssociation) ->
                   <hss:privateUserId>~s</hss:privateUserId>
                   <hss:userPassword>~s</hss:userPassword>
                   <hss:allowedAuthMechanism>DIGEST</hss:allowedAuthMechanism>
-               </hss:privateUser>               
+               </hss:privateUser>
+               <hss:publicData publicIdValue=\"sip:~s\">
+                  <hss:publicIdValue>sip:~s</hss:publicIdValue>
+                  <hss:privateUserId>~s</hss:privateUserId>
+                  <hss:implicitRegSet>~s</hss:implicitRegSet>
+                  <hss:serviceProfileId>~s</hss:serviceProfileId>
+                  <hss:sessionBarringInd>false</hss:sessionBarringInd>
+               </hss:publicData>   
+               <hss:subscriberServiceProfile serviceProfileId=\"~s\">
+                  <hss:serviceProfileId>~s</hss:serviceProfileId>
+                  <hss:configuredServiceProfile configuredServiceProfileId=\"~s\">
+                     <hss:configuredServiceProfileId>~s</hss:configuredServiceProfileId>
+                  </hss:configuredServiceProfile>
+                  <hss:maxNumberSessions>99</hss:maxNumberSessions> 
+               </hss:subscriberServiceProfile>                                
             </hss:CreateIMSAssociation>
          </cai3:MOAttributes>
       </cai3:Create>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, AssociationId, AssociationId, AssociationId, User, User, Pass]).
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, AssociationId, User, User, Pass, PubId, PubId, User, IRS, PubId, PubId, PubId, CSProfile, CSProfile]).
     
 add_ims_virtual_subscriber(Session, IMSAssociation) ->
     User = maps:get(user, IMSAssociation),
-    AssociationId = maps:get(association, IMSAssociation),    
+    AssociationId = maps:get(association, IMSAssociation),  
+    PubId = maps:get(pubid, IMSAssociation), 
+    IRS = maps:get(irs, IMSAssociation),   
+    CSProfile = maps:get(csprofile, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -113,13 +133,27 @@ add_ims_virtual_subscriber(Session, IMSAssociation) ->
                <hss:isPsi>true</hss:isPsi>
                <hss:privateUser privateUserId=\"~s\">
                   <hss:privateUserId>~s</hss:privateUserId>
-               </hss:privateUser>               
+               </hss:privateUser>
+               <hss:publicData publicIdValue=\"sip:~s\">
+                  <hss:publicIdValue>sip:~s</hss:publicIdValue>
+                  <hss:privateUserId>~s</hss:privateUserId>
+                  <hss:implicitRegSet>~s</hss:implicitRegSet>
+                  <hss:serviceProfileId>~s</hss:serviceProfileId>
+                  <hss:sessionBarringInd>false</hss:sessionBarringInd>
+               </hss:publicData>   
+               <hss:subscriberServiceProfile serviceProfileId=\"~s\">
+                  <hss:serviceProfileId>~s</hss:serviceProfileId>
+                  <hss:configuredServiceProfile configuredServiceProfileId=\"~s\">
+                     <hss:configuredServiceProfileId>~s</hss:configuredServiceProfileId>
+                  </hss:configuredServiceProfile>
+                  <hss:maxNumberSessions>99</hss:maxNumberSessions> 
+               </hss:subscriberServiceProfile>               
             </hss:CreateIMSAssociation>
          </cai3:MOAttributes>
       </cai3:Create>
    </soapenv:Body>
 </soapenv:Envelope>
-",[Session, AssociationId, AssociationId, AssociationId, User, User]).    
+",[Session, AssociationId, AssociationId, AssociationId, User, User, PubId, PubId, User, IRS, PubId, PubId, PubId, CSProfile, CSProfile]).    
 
 add_ims_teluri(Session, IMSAssociation) ->
     User = maps:get(user, IMSAssociation),
@@ -354,7 +388,10 @@ delete_ims_enum(Session, Phone) ->
    </soapenv:Body>
 </soapenv:Envelope>",[Session, Phone, Phone]).
     
-set_ims_pass(Session, User, Pass) ->
+set_ims_pass(Session, IMSAssociation) ->
+    User = maps:get(user, IMSAssociation),
+    Pass = maps:get(pass, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -375,9 +412,12 @@ set_ims_pass(Session, User, Pass) ->
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, User, User, User, Pass]).
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, User, Pass]).
     
-set_ims_phonecontext(Session, User, PhoneContext) ->
+set_ims_phonecontext(Session, IMSAssociation) ->
+    PubId = maps:get(pubid, IMSAssociation),
+    PhoneContext = maps:get(phonecontext, IMSAssociation),
+    AssociationId = maps:get(association, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -398,7 +438,7 @@ set_ims_phonecontext(Session, User, PhoneContext) ->
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-</soapenv:Envelope>",[Session, User, User, User, PhoneContext]).
+</soapenv:Envelope>",[Session, AssociationId, AssociationId, PubId, PhoneContext]).
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

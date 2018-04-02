@@ -31,19 +31,19 @@ processor(create_service, Message) ->
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     
     User = em_utils:get_element_text(ServiceUserId),
-    IMSAssociation = #{
+    Event = #{
         user        => em_utils:get_element_text(ServiceUserId),
         pubid       => em_utils:get_element_text(ServiceUserId),
         group       => em_utils:get_element_text(GroupId),
         type        => 'virtual',
-        csprofile   => 'IMT_VIRTUAL',
+        csprofile   => ?SERVICEPROFILE,
         ispsi       => 'true',
         isdefault   => 'false',
         irs         => '0',
         association => em_utils:md5_hex(User),
-        phone       => 'NODATA'
+        phone       => "NODATA"
     },
-    ok = em_processor_service:create_user(IMSAssociation);
+    ok = em_processor_service:create_user(Event);
 
 processor(modify_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -53,12 +53,12 @@ processor(modify_service, Message) ->
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
 
     User = em_utils:get_element_text(ServiceUserId),
-    IMSAssociation = #{
+    Event = #{
         user        => em_utils:get_element_text(ServiceUserId),
         pubid       => fix_nil(PublicUserIdentity),
         phone       => fix_nil(PhoneNumber),
         type        => 'virtual',
-        csprofile   => 'IMT_VIRTUAL',
+        csprofile   => ?SERVICEPROFILE,
         ispsi       => 'true',
         isdefault   => 'false',
         irs         => '0',
@@ -69,7 +69,7 @@ processor(modify_service, Message) ->
     % if the PubId field is present, if not, the request is ignored.
     case fix_nil(PublicUserIdentity) of
         undefined -> ok;
-        _ -> ok = em_processor_service:modify_user(IMSAssociation)
+        _ -> ok = em_processor_service:modify_user(Event)
         
     end;
         
@@ -82,12 +82,12 @@ processor(modify_group_vp, Message) ->
 
     User = fix_nil(PubId),
     
-    IMSAssociation = #{
+    Event = #{
         user        => User,
         pubid       => fix_nil(PubId),
         phone       => fix_nil(Phone),
         type        => 'virtual',
-        csprofile   => 'IMT_VIRTUAL',
+        csprofile   => ?SERVICEPROFILE,
         ispsi       => 'true',
         isdefault   => 'false',
         irs         => '0',
@@ -97,10 +97,10 @@ processor(modify_group_vp, Message) ->
     
     case em_srd:user_exists(User) of
         false ->
-            em_processor_service:create_user(IMSAssociation);
+            em_processor_service:create_user(Event);
             
         true ->
-            em_processor_service:modify_user(IMSAssociation)
+            em_processor_service:modify_user(Event)
     end;
 
 processor(modify_user_vm, Message) ->
@@ -114,14 +114,14 @@ processor(modify_user_vm, Message) ->
     MailPass = em_utils:get_element_text(P),
     ?INFO_MSG("Processing vmail, LOADING EVENT: ~n", []), 
                     
-    IMSAssociation = #{
+    Event = #{
         user        => UserName,
         mailuser    => MailUser,
         mailpass    => MailPass,
         current_mailuser   => em_srd:get_vmail_user(UserName),
         current_mailpass   => em_srd:get_vmail_pass(UserName)
     },
-    em_processor_vmail:modify(IMSAssociation);
+    em_processor_vmail:modify(Event);
         
 processor(create_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -129,20 +129,20 @@ processor(create_user, Message) ->
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
 
     User = em_utils:get_element_text(UserId),        
-    IMSAssociation = #{
+    Event = #{
         user        => User,
         pubid       => User,
         group       => em_utils:get_element_text(GroupId),
         type        => 'user',
-        csprofile   => 'IMS_CENTREX',
+        csprofile   => ?CENTREXPROFILE,
         ispsi       => 'false',
         isdefault   => 'false',
         irs         => '1',
         association => em_utils:md5_hex(User),
-        phone       => 'NODATA',
+        phone       => "NODATA",
         pass        => em_utils:randchar(14)
     },
-    ok = em_processor_user:create_user(IMSAssociation);
+    ok = em_processor_user:create_user(Event);
     
     
 processor(modify_user, Message) ->
@@ -175,44 +175,48 @@ processor(modify_user, Message) ->
         undefined ->
             ok; 
         _ ->
-            em_processor_user:set_phonecontext(UserName, PhoneContext, em_srd:get_phonecontext(UserName))
+            ContextEvent = #{
+                user => UserName,
+                association => em_utils:md5_hex(UserName),
+                phonecontext => PhoneContext
+            }, 
+            em_processor_user:set_phonecontext(ContextEvent)
     end,
-    
 
     case TrunkLinePort of
          undefined when Phone == undefined ->
              ok;
          undefined when Phone /= undefined ->
               ?INFO_MSG("Modify user ~n", []),
-              IMSAssociation = #{
+              Event = #{
                   user        => UserName,
                   pubid       => fix_nil(L),
                   phone       => fix_nil(P),
                   type        => 'user',
-                  csprofile   => 'IMS_CENTREX',
+                  csprofile   => ?CENTREXPROFILE,
                   ispsi       => 'false',
                   isdefault   => 'false',
                   irs         => '1',
                   association => em_utils:md5_hex(UserName),
                   sprofile    => fix_nil(L)
               },
-              em_processor_user:modify_user(IMSAssociation);
+              em_processor_user:modify_user(Event);
                   
          _  -> 
              ?INFO_MSG("Modify trunk user~n", []),
-             IMSAssociation1 = #{
+             Event1 = #{
                  user        => UserName,
                  pubid       => fix_nil(LP),
                  phone       => fix_nil(P),
                  type        => 'trunk',
-                 csprofile   => 'BusinessTrunk_wild',
+                 csprofile   => ?TRUNKPROFILE_DDI,
                  ispsi       => 'true',
                  isdefault   => 'false',
                  irs         => '0',
                  association => em_utils:md5_hex(UserName),
                  sprofile    => fix_nil(LP)
              },
-             em_processor_trunk:modify_trunk_user(IMSAssociation1)
+             em_processor_trunk:modify_user(Event1)
              
      end;  
          
@@ -222,22 +226,22 @@ processor(delete_service, Message) ->
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     User = em_utils:get_element_text(ServiceUserId),
     
-    IMSAssociation = #{
+    Event = #{
         user => User,
         association => em_utils:md5_hex(User)
     },
-    em_processor_service:delete_user(IMSAssociation);
+    em_processor_service:delete_user(Event);
 
 processor(delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [UserId] = em_utils:get_elements(userId, InsideCommand),
     User = em_utils:get_element_text(UserId),
 
-    IMSAssociation = #{
+    Event = #{
         user => User,
         association => em_utils:md5_hex(User)
     },
-    em_processor_user:delete_user(IMSAssociation);
+    em_processor_user:delete_user(Event);
 
 processor(set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -245,7 +249,13 @@ processor(set_password, Message) ->
     [P] = em_utils:get_elements(newPassword, InsideCommand),
     UserName = em_utils:get_element_text(U),
     Pass = em_utils:get_element_text(P),
-    em_processor_user:set_password(UserName, Pass);
+
+    Event = #{
+        user => UserName,
+        association => em_utils:md5_hex(UserName),
+        pass => Pass
+    },
+    em_processor_user:set_password(Event);
     
 processor(create_trunk, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -259,20 +269,20 @@ processor(create_trunk, Message) ->
     PubId = em_utils:get_element_text(LinePort),
     GrpId = em_utils:get_element_text(GroupId),
              
-    IMSAssociation = #{
+    Event = #{
         user        => UserName,
         pubid       => PubId,
         group       => GrpId,
         type        => 'pilot',
-        csprofile   => 'BusinessTrunk',
+        csprofile   => ?SIPTRUNKPROFILE_PILOT,
         ispsi       => 'false',
         isdefault   => 'false',
         irs         => '1',
         association => em_utils:md5_hex(UserName),
-        phone       => 'NODATA',
+        phone       => "NODATA",
         pass        => SipPass
     },    
-    em_processor_trunk:create_user(IMSAssociation);
+    em_processor_trunk:create_user(Event);
     
 
 processor(delete_group, Message) ->
@@ -285,7 +295,7 @@ processor(delete_group, Message) ->
         fun(I) ->
             {I1} = I,
             I2 = binary_to_list(I1),
-            em_processor_user:delete_user(#{user=>I2, association=>em_utils:md5_hex(I2)})
+            em_processor_user:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
         end, Users);
 
 processor(create_domain, Message) ->
