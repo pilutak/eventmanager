@@ -40,7 +40,7 @@ init([]) ->
          [em_ema_server]},
          
          
-    ElliOpts = [{callback, elli_minimal_callback}, {port, 3000}],
+    ElliOpts = [{callback, em_api_alivecheck_callback}, {port, 8080}],
     ElliSpec = {
         fancy_http,
         {elli, start_link, [ElliOpts]},
