@@ -13,8 +13,16 @@
 %% limitations under the License.
 
 %% Serviceprofiles must be changes to match the HSS configuration
--define(SERVICEPROFILE, 'IMT_VIRTUAL').
--define(CENTREXPROFILE, 'IMS_CENTREX').
+%% valid profiles on ICS5:
+%%IMT_VIRTUAL
+%%IMT_VIRTUAL_csas02
+%%IMS_CENTREX_MAE
+%%IMS_CENTREX_csas02
+%%BusinessTrunk
+%%BusinessTrunk_wild
+
+-define(SERVICEPROFILE, 'IMT_VIRTUAL_csas02').
+-define(CENTREXPROFILE, 'IMS_CENTREX_csas02').
 -define(TRUNKPROFILE_DDI, 'BusinessTrunk_wild').
 -define(SIPTRUNKPROFILE_PILOT, 'BusinessTrunk').
 
