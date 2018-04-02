@@ -1,4 +1,4 @@
--module(elli_minimal_callback).
+-module(em_api_alivecheck_callback.erl).
 -export([handle/2, handle_event/3]).
 
 -include_lib("elli/include/elli.hrl").
