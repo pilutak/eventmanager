@@ -16,6 +16,7 @@
 %% valid profiles on ICS5:
 %%IMT_VIRTUAL
 %%IMT_VIRTUAL_csas02
+%%IMS_CENTREX
 %%IMS_CENTREX_MAE
 %%IMS_CENTREX_csas02
 %%BusinessTrunk
