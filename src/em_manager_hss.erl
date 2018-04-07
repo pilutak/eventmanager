@@ -89,10 +89,10 @@ modify_trunk_user(Event) ->
         
     end.   
     
-    
 set_password(#{ user := User, pass := Pass} = Event) ->
     ?INFO_MSG("Updating SIP password for user: ~p~n", [User]),
-    em_ema_server:update_hss_pass(Event),
+    CAI3G = em_cai3g_envelope:set_ims_pass(Event),
+    ok = em_ema:request(CAI3G),
     em_srd:set_pass(User, Pass).
     
 set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
@@ -152,57 +152,93 @@ execute_plan(Plan, Event) ->
 create_ims_association(#{ phone := "NODATA", type := Type} = Event) ->
     ok = em_srd:create_user(Event),
     case Type of
-        user -> em_ema_server:create_hss_subscriber(Event);
-        virtual -> em_ema_server:create_hss_virtual_subscriber(Event);
-        trunk ->  em_ema_server:create_hss_virtual_subscriber(Event);
-        pilot -> em_ema_server:create_hss_subscriber(Event)
+        user ->
+            CAI3G = em_cai3g_envelope:add_ims_subscriber(Event),
+            ok = em_ema:request(CAI3G);
+        virtual ->
+            CAI3G = em_cai3g_envelope:add_ims_virtual_subscriber( Event),
+            ok = em_ema:request(CAI3G);
+        trunk ->
+            CAI3G = em_cai3g_envelope:add_ims_virtual_subscriber( Event),
+            ok = em_ema:request(CAI3G); 
+        pilot ->
+            CAI3G = em_cai3g_envelope:add_ims_subscriber(Event),
+            ok = em_ema:request(CAI3G)
     end;
-            
 create_ims_association(#{ phone := nil, type := user } = Event) ->
     ok = em_srd:create_user(Event),
-    ok = em_ema_server:create_hss_subscriber(Event);
+    CAI3G = em_cai3g_envelope:add_ims_subscriber(Event),
+    ok = em_ema:request(CAI3G);
 create_ims_association(#{ phone := nil, type := trunk } = Event) ->
     ok = em_srd:create_user(Event),
-    ok = em_ema_server:create_hss_virtual_subscriber(Event);
+    CAI3G = em_cai3g_envelope:add_ims_virtual_subscriber(Event),
+    ok = em_ema:request(CAI3G); 
 create_ims_association(#{ phone := nil, type := pilot } = Event) ->
     ok = em_srd:create_user(Event),
-    ok = em_ema_server:create_hss_subscriber(Event);
-    
+    CAI3G = em_cai3g_envelope:add_ims_subscriber(Event),
+    ok = em_ema:request(CAI3G);     
 create_ims_association(#{ type := Type } = Event) ->
     ok = em_srd:create_user(Event),
     case Type of
-        user -> em_ema_server:create_hss_subscriber(Event);
-        virtual -> em_ema_server:create_hss_virtual_subscriber(Event);
-        trunk ->  em_ema_server:create_hss_virtual_subscriber(Event);
-        pilot -> em_ema_server:create_hss_subscriber(Event)
-    end,
-    
-    ok = em_srd:set_e164(Event),
-    ok = em_ema_server:create_hss_teluri(Event),
-    ok = em_ema_server:create_enum(Event).
+        user ->
+            CAI3G = em_cai3g_envelope:add_ims_subscriber(Event),
+            ok = em_ema:request(CAI3G); 
+        virtual ->
+            CAI3G = em_cai3g_envelope:add_ims_virtual_subscriber(Event),
+            ok = em_ema:request(CAI3G); 
 
+        trunk ->
+            CAI3G = em_cai3g_envelope:add_ims_virtual_subscriber(Event),
+            ok = em_ema:request(CAI3G); 
+
+        pilot ->
+            CAI3G = em_cai3g_envelope:add_ims_subscriber(Event),
+            ok = em_ema:request(CAI3G) 
+    end,
+    ok = em_srd:set_e164(Event),
+    CAI3G1 = em_cai3g_envelope:add_ims_teluri(Event),
+    ok = em_ema:request(CAI3G1), 
+    
+    CAI3G2 = em_cai3g_envelope:add_ims_enum(Event),
+    ok = em_ema:request(CAI3G2).
+    
 % copy from service
 delete_phone(#{ user := User, association := AId } = Event) ->
     CPhone = em_srd:get_e164(Event),
     ok = em_srd:delete_e164(User),
-    ok = em_ema_server:delete_enum(CPhone),
-    ok = em_ema_server:delete_hss_teluri(AId, CPhone).
+    CAI3G = em_cai3g_envelope:delete_ims_enum(CPhone),
+    ok = em_ema:request(CAI3G), 
+    CAI3G1 = em_cai3g_envelope:delete_ims_teluri(AId, CPhone),
+    ok = em_ema:request(CAI3G1).
+
 
 % special handling of users
 create_phone(#{ pubid := nil, user := User } = Event) ->
     Event1 = maps:update(pubid, User, Event),
     ok = em_srd:set_e164(Event1),
-    ok = em_ema_server:create_hss_teluri(Event1),
-    ok = em_ema_server:create_enum(Event1);
+
+    CAI3G1 = em_cai3g_envelope:add_ims_teluri(Event1),
+    ok = em_ema:request(CAI3G1), 
+    
+    CAI3G2 = em_cai3g_envelope:add_ims_enum(Event1),
+    ok = em_ema:request(CAI3G2);
+
 create_phone(#{ pubid := undefined, user := User } = Event) ->
     Event1 = maps:update(pubid, User, Event),
     ok = em_srd:set_e164(Event1),
-    ok = em_ema_server:create_hss_teluri(Event1),
-    ok = em_ema_server:create_enum(Event1);
+    CAI3G1 = em_cai3g_envelope:add_ims_teluri(Event1),
+    ok = em_ema:request(CAI3G1), 
+    
+    CAI3G2 = em_cai3g_envelope:add_ims_enum(Event1),
+    ok = em_ema:request(CAI3G2);
+
 create_phone(Event) ->
     ok = em_srd:set_e164(Event),
-    ok = em_ema_server:create_hss_teluri(Event),
-    ok = em_ema_server:create_enum(Event).
+    CAI3G1 = em_cai3g_envelope:add_ims_teluri(Event),
+    ok = em_ema:request(CAI3G1), 
+    
+    CAI3G2 = em_cai3g_envelope:add_ims_enum(Event),
+    ok = em_ema:request(CAI3G2).
 
 delete_impu_sip(#{ user := User, association := AId } = Event) ->
     CPubId = em_srd:get_sipuri(Event),
@@ -214,13 +250,20 @@ delete_impu_sip(#{ user := User, association := AId } = Event) ->
             delete_phone(Event)
     end,
 
-    ok = em_ema_server:delete_hss_pubid(AId, CPubId),
-    ok = em_ema_server:delete_hss_serviceprofile(AId, CPubId),
-
+    CAI3G1 = em_cai3g_envelope:delete_ims_pubid(AId, CPubId),
+    ok = em_ema:request(CAI3G1),
+        
+    CAI3G2 = em_cai3g_envelope:delete_ims_serviceprofile(AId, CPubId),
+    ok = em_ema:request(CAI3G2),
+    
     Event1 = maps:update(pubid, User, Event),
     ok = em_srd:set_sipuri(Event1),
-    ok = em_ema_server:create_hss_serviceprofile(Event1),
-    ok = em_ema_server:create_hss_pubid(Event1),     
+
+    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event1),
+    ok = em_ema:request(CAI3G3),
+
+    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event1),
+    ok = em_ema:request(CAI3G4),
     
     case CPhone of
         "NODATA" -> ok;        
@@ -239,13 +282,20 @@ update_impu_sip(#{ user := User, association := AId, pubid := undefined } = Even
             delete_phone(Event)
     end,
 
-    ok = em_ema_server:delete_hss_pubid(AId, CPubId),
-    ok = em_ema_server:delete_hss_serviceprofile(AId, CPubId),
+    CAI3G1 = em_cai3g_envelope:delete_ims_pubid(AId, CPubId),
+    ok = em_ema:request(CAI3G1),
+        
+    CAI3G2 = em_cai3g_envelope:delete_ims_serviceprofile(AId, CPubId),
+    ok = em_ema:request(CAI3G2),
     
     Event1 = maps:update(pubid, User, Event),
     ok = em_srd:set_sipuri(Event1),
-    ok = em_ema_server:create_hss_serviceprofile(Event1),
-    ok = em_ema_server:create_hss_pubid(Event1),      
+    
+    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event1),
+    ok = em_ema:request(CAI3G3),
+
+    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event1),
+    ok = em_ema:request(CAI3G4),
     
     case CPhone of
         "NODATA" -> ok;        
@@ -264,12 +314,18 @@ update_impu_sip(#{ association := AId } = Event) ->
             delete_phone(Event)
     end,
 
-    ok = em_ema_server:delete_hss_pubid(AId, CPubId),
-    ok = em_ema_server:delete_hss_serviceprofile(AId, CPubId),
+    CAI3G1 = em_cai3g_envelope:delete_ims_pubid(AId, CPubId),
+    ok = em_ema:request(CAI3G1),
+        
+    CAI3G2 = em_cai3g_envelope:delete_ims_serviceprofile(AId, CPubId),
+    ok = em_ema:request(CAI3G2),
     
     ok = em_srd:set_sipuri(Event),
-    ok = em_ema_server:create_hss_serviceprofile(Event),
-    ok = em_ema_server:create_hss_pubid(Event),      
+    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event),
+    ok = em_ema:request(CAI3G3),
+
+    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event),
+    ok = em_ema:request(CAI3G4),
     
     case CPhone of
         "NODATA" -> ok;        
@@ -283,10 +339,13 @@ delete_ims_association(Event) ->
     case CPhone of
         "NODATA" -> ok;        
         _ ->
-            ok = em_ema_server:delete_enum(CPhone)
+            CAI3G = em_cai3g_envelope:delete_ims_enum(CPhone),
+            ok = em_ema:request(CAI3G)
+            
     end,
     ok = em_srd:delete_user(Event),
-    ok = em_ema_server:delete_hss_subscriber(Event).
+    CAI3G1 = em_cai3g_envelope:delete_ims_subscriber(Event),
+    em_ema:request(CAI3G1).
 
 
 plan_pubid_change(nil, _X, _X) ->

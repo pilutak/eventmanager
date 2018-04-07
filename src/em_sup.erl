@@ -30,17 +30,16 @@ init([]) ->
          infinity,
          supervisor,
          [em_reader_sup]},
-         
-    EMASERVER =
-        {em_ema_server,
-         {em_ema_server, start_link, []},
+    EMA =
+        {em_ema,
+         {em_ema, start_link, []},
          permanent,
          5000,
          worker,
-         [em_ema_server]},
+        [em_ema]},
          
          
-    ElliOpts = [{callback, em_api_alivecheck_callback}, {port, 8080}],
+    ElliOpts = [{callback, em_api_callback}, {port, 8080}],
     ElliSpec = {
         fancy_http,
         {elli, start_link, [ElliOpts]},
@@ -50,4 +49,4 @@ init([]) ->
         [elli]},
     
     {ok,{{one_for_one,10,1},
-	 [EMOCIRSUP, EMASERVER, ElliSpec]}}.    
+	 [EMOCIRSUP, EMA, ElliSpec]}}.    

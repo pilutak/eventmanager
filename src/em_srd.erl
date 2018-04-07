@@ -17,6 +17,10 @@
  
 -export([
     create_user/1,
+    insert_event/3,
+    get_events/0,
+    complete_event/1,
+    fail_event/1,
     delete_user/1,
     get_users/1,
     set_e164/1,
@@ -50,8 +54,44 @@ create_user(IMSAssociation) ->
     AssociationId = maps:get(association, IMSAssociation),
     
     C = connect(),
-    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext, association_id) values ($1,$2,$3,$4,'tg.gl',$5)", [Id,GroupId,PubId,Type,AssociationId]),
+    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext, association_id, created) values ($1,$2,$3,$4,'tg.gl',$5, current_timestamp)", [Id,GroupId,PubId,Type,AssociationId]),
     epgsql:close(C).
+
+insert_event(UserId, Command, Event) ->    
+    C = connect(),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into srd_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "pending"]),
+    epgsql:close(C),
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             R
+             %binary_to_list(R)
+    end.
+
+get_events() ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command from srd_event where true", []),
+    ok = epgsql:close(C),    
+    case Rows of
+        [] -> undefined;
+        _ -> Rows,
+            ?INFO_MSG("Rows: ~p~n", [Rows]), 
+            [event_to_json(P) || P <- Rows]
+    end.
+
+
+
+complete_event(Id) ->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["completed",Id]),
+    epgsql:close(C).
+
+fail_event(Id) ->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["failed",Id]),
+    epgsql:close(C).
+
+
     
 delete_user(IMSAssociation) ->
     Id = maps:get(user, IMSAssociation),
@@ -63,12 +103,12 @@ set_e164(IMSAssociation) ->
     Id = maps:get(user, IMSAssociation),
     Phone = maps:get(phone, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1 where id=$2", [Phone,Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1, updated=current_timestamp where id=$2", [Phone,Id]),
     epgsql:close(C).
         
 delete_e164(Id)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA' where id=$1", [Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA', updated=current_timestamp where id=$1", [Id]),
     epgsql:close(C).
     
 get_e164(IMSAssociation) ->
@@ -97,13 +137,13 @@ set_sipuri(IMSAssociation)->
     Id = maps:get(user, IMSAssociation),
     PubId = maps:get(pubid, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$2", [PubId,Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1, updated=current_timestamp where id=$2", [PubId,Id]),
     epgsql:close(C). 
        
 set_sipuri_default(IMSAssociation)->
     Id = maps:get(user, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1 where id=$1", [Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1, updated=current_timestamp where id=$1", [Id]),
     epgsql:close(C).
     
 get_group(Id) ->
@@ -118,7 +158,7 @@ get_group(Id) ->
     
 set_pass(UserId, Pass)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set password=$1 where id=$2", [Pass,UserId]),
+    {ok, _} = epgsql:equery(C, "update srd_user set password=$1, updated=current_timestamp where id=$2", [Pass,UserId]),
     ok = epgsql:close(C),
     {ok, success}.
     
@@ -152,12 +192,12 @@ get_users(GrpId) ->
     
 set_vmail(UserName, MailUser, MailPass) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user=$1, vmail_password=$2 where id=$3", [MailUser,MailPass,UserName]),
+    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user=$1, vmail_password=$2, updated=current_timestamp where id=$3", [MailUser,MailPass,UserName]),
     epgsql:close(C).
         
 delete_vmail(UserId)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user='NODATA', vmail_password='NODATA' where id=$1", [UserId]),
+    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user='NODATA', vmail_password='NODATA', updated=current_timestamp where id=$1", [UserId]),
     epgsql:close(C).
     
 get_vmail_user(UserId) ->
@@ -184,7 +224,7 @@ get_phonecontext(UserId) ->
     
 set_phonecontext(UserId, PhoneContext)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set phonecontext=$1 where id=$2", [PhoneContext,UserId]),
+    {ok, _} = epgsql:equery(C, "update srd_user set phonecontext=$1, updated=current_timestamp where id=$2", [PhoneContext,UserId]),
     epgsql:close(C).
         
 %%%===================================================================
@@ -195,3 +235,6 @@ connect() ->
     {ok, C} = epgsql:connect(PGHost, "srd", "srd", [{database, "srd"},{timeout, 4000}]),
     C.
 
+event_to_json({Id,User,Command}) ->
+    ?INFO_MSG("Event to JSON: ~p~n", [Command]), 
+	#{id=>Id, command=>Command, user=>User}.

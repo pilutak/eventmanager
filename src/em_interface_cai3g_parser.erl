@@ -16,7 +16,9 @@
 
 -export([
     login_response/1,
-    logout_response/1]).
+    logout_response/1,
+    send_response/1,
+    error_resp/1]).
 
 %%%===================================================================
 %%% API
@@ -47,6 +49,22 @@ logout_response({ok,Resp}) ->
             {ok,RespSession};
         Fail -> Fail
     end.
+    
+send_response({ok, Resp}) ->
+    {RespParsed, _} = xmerl_scan:string(Resp),
+
+    case is_send_successful(RespParsed) of
+        true  -> {ok, Resp};
+        Fail -> Fail
+    end.
+
+error_resp(Resp) ->
+    {RespParsed, _} = xmerl_scan:string(Resp),
+
+    case is_send_successful(RespParsed) of
+        true  -> {ok, Resp};
+        Fail -> Fail
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -64,5 +82,20 @@ is_successful(RespParsed) ->
             {error,{faultcode,RespFaultCode},{faultstring,RespFaultString}}
     end.
 
-
-
+is_send_successful(RespParsed) ->
+    [Body] = em_utils:get_elements('S:Body', em_utils:get_element_childs(RespParsed)),
+    case em_utils:get_elements('ns2:Fault', em_utils:get_element_childs(Body)) of
+        [undefined] -> true;
+        [Fault] -> 
+            [Detail] = em_utils:get_elements('detail', em_utils:get_element_childs(Fault)),
+            [Cai3gFault] = em_utils:get_elements('Cai3gFault:Cai3gFault', em_utils:get_element_childs(Detail)),
+            [FaultCode] = em_utils:get_elements('faultcode', em_utils:get_element_childs(Cai3gFault)),
+            [Details] = em_utils:get_elements('details', em_utils:get_element_childs(Cai3gFault)),
+            [IMSFault] = em_utils:get_elements('IMSFault:IMSFault', em_utils:get_element_childs(Details)),
+            [ErrorCode] = em_utils:get_elements('errorcode', em_utils:get_element_childs(IMSFault)),
+            
+            RespFaultCode = em_utils:get_element_text(FaultCode),
+            RespErrorCode = em_utils:get_element_text(ErrorCode),
+            
+            {error, {RespFaultCode, RespErrorCode}}
+    end.
