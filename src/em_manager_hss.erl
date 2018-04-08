@@ -28,7 +28,7 @@ delete_user(Event) ->
     delete_ims_association(Event).
         
 modify_user(Event) ->
-    ?INFO_MSG("Modifying user: ~p", [maps:get(user, Event)]),    
+    ?INFO_MSG("Modifying user: ~p~n", [maps:get(user, Event)]),    
     CurrentUserType = em_srd:get_type(Event),
     User = maps:get(user, Event),
     Group = em_srd:get_group(User),
@@ -65,7 +65,7 @@ modify_user(Event) ->
     end.
     
 modify_trunk_user(Event) ->
-    ?INFO_MSG("Modifying trunk user: ~p", [maps:get(user, Event)]),    
+    ?INFO_MSG("Modifying trunk user: ~p~n", [maps:get(user, Event)]),    
     CurrentUserType = em_srd:get_type(Event),
     User = maps:get(user, Event),
     Group = em_srd:get_group(User),

@@ -165,7 +165,7 @@ open_session(Host, User, Pass) ->
     case send(SoapEnv, Host) of
         {ok, Body} ->
             {ok, Session} = em_interface_cai3g_parser:login_response({ok, Body}),
-            ?INFO_MSG("EMA session created: ~p", [Session]),
+            ?INFO_MSG("EMA session created: ~p~n", [Session]),
             Session;
         {error, _} -> 
             ?INFO_MSG("EMA session retrying in 5000 ms: ~n", []),

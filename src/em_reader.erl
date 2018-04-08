@@ -28,11 +28,11 @@
 %%%===================================================================
 
 start_connection() ->
-{ok, Hosts} = application:get_env(em, bw_hosts),
-    lists:foreach(
-      fun(I) ->
-	      {ok, _} = supervisor:start_child(em_reader_sup, [I])
-      end, Hosts).
+    {ok, Hosts} = application:get_env(em, bw_hosts),
+        lists:foreach(
+          fun(I) ->
+	          {ok, _} = supervisor:start_child(em_reader_sup, [I])
+          end, Hosts).
 
       
 %%%===================================================================
@@ -47,6 +47,7 @@ init(Parent, Host) ->
     process_flag(trap_exit, true),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     register(list_to_atom(Host),self()),
+    ?INFO_MSG("You are my creator, but I am your master; - obey! ~n", []),	
     connect(#state{socket = undefined, host = Host}).
 
 
@@ -54,16 +55,16 @@ connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 32768},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
 	    %{ok,Dir}=file:get_cwd(),
-        ?INFO_MSG("Socket connected: ~p", [Host]),
+        ?INFO_MSG("Socket connected: ~p~n", [Host]),
 	    %?LOG("Connected (em2.log located at ~p ) ~n",Dir),
 	    loop(State#state{socket=Sock});
 
         {error,timeout} ->
-        ?ERROR_MSG("Socket timeout, reconnecting: ~p", [Host]),
+        ?ERROR_MSG("Socket timeout, reconnecting: ~p~n", [Host]),
 	    connect(State);
 
         {error,Reason} ->
-	    ?ERROR_MSG("Socket timeout, reconnecting: ~p", [Reason]),
+	    ?ERROR_MSG("Socket timeout, reconnecting: ~p~n", [Reason]),
 	    timer:sleep(10000),
 	    connect(State)
 
@@ -78,12 +79,12 @@ loop(State) ->
 	    process(Data,State);
 
 	{tcp_closed, _} ->
-	    ?ERROR_MSG("Socket closed, reconnecting: ~p", []),
+	    ?ERROR_MSG("Socket closed, reconnecting: ~n", []),
 	    timer:sleep(10000),
 	    connect(State);
 
 	{tcp_error, _, Reason} ->
-	    ?ERROR_MSG("Socket error: ~p", [Reason]);
+	    ?ERROR_MSG("Socket error: ~p~n", [Reason]);
 
 
 	Any when is_tuple(Any), is_pid(element(2, Any)) ->
@@ -93,7 +94,7 @@ loop(State) ->
     
 	Any ->
 	    %error_logger:error_msg("Unexpected message: ~w~n", [Any]),
-        ?ERROR_MSG("Unexpected message: ~w~n", [Any]),
+        ?ERROR_MSG("Unexpected message: ~p~n", [Any]),
 	    loop(State)
     end.
   

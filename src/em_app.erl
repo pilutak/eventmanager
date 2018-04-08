@@ -14,11 +14,13 @@
 
 -module(em_app).
 -behaviour(application).
+-include("../include/em.hrl").
+
 
 -export([start/2]).
 -export([stop/1]).
 
-start(_Type, _Args) ->	
+start(_Type, _Args) ->
     case em_sup:start_link() of
 	{ok, Pid} ->
 	    case em_reader:start_connection() of
