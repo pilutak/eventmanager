@@ -186,9 +186,9 @@ send(Request, Host) ->
         {ok,{{_,_OtherStatus,_},_Headers,_Body}} ->
             %?LOG("HTTP Status Code unexpected ~p ~n waiting ~p miliseconds ~n",OtherStatus, 5000),
             exit(http_code_unexpected);
-        %{error, {failed_connect, Error}} ->
-            %?INFO_MSG("Connect failed towards EMA: ~n", []),
-            %{error, Error};
+        {error, {failed_connect, Error}} ->
+            ?INFO_MSG("Connect failed towards EMA: ~n", []),
+            {error, Error};
         {error,Reason} ->
             %?INFO_MSG("Error towards EMA: ~p", [Reason]),
             exit(Reason)
