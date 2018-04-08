@@ -70,7 +70,7 @@ insert_event(UserId, Command, Event) ->
 
 get_events() ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command from srd_event where true", []),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from srd_event where true", []),
     ok = epgsql:close(C),    
     case Rows of
         [] -> undefined;
@@ -235,6 +235,6 @@ connect() ->
     {ok, C} = epgsql:connect(PGHost, "srd", "srd", [{database, "srd"},{timeout, 4000}]),
     C.
 
-event_to_json({Id,User,Command}) ->
-    ?INFO_MSG("Event to JSON: ~p~n", [Command]), 
-	#{id=>Id, command=>Command, user=>User}.
+event_to_json({Id, User, Command, Status, Inserted}) ->
+    %?INFO_MSG("Event to JSON: ~p~n", [Command]), 
+	#{id=>Id, event=>Command, user=>User, status=>Status, timestamp=>Inserted}.
