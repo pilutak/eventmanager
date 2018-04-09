@@ -70,7 +70,7 @@ insert_event(UserId, Command, Event) ->
 
 get_events() ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from srd_event where true", []),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from srd_event ORDER BY inserted ASC", []),
     ok = epgsql:close(C),    
     case Rows of
         [] -> undefined;
