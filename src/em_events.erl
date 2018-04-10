@@ -308,7 +308,7 @@ processor(Id, delete_group, Message) ->
         fun(I) ->
             {I1} = I,
             I2 = binary_to_list(I1),
-            em_processor_user:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
+            em_hss_managerr:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
         end, Users),
     em_srd:complete_event(Id);
 
