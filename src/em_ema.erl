@@ -66,7 +66,7 @@ init([]) ->
     {ok,{Host, User, Pass}} = application:get_env(em, ema),
     
     Session = open_session(Host, User, Pass),
-    erlang:send_after(10000, self(), {session_refresh, Session}),
+    erlang:send_after(300000, self(), {session_refresh, Session}),
     
     {ok, #state{ema_host = Host, ema_user = User, ema_pass = Pass, session = Session}}.
 

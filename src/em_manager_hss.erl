@@ -89,11 +89,10 @@ modify_trunk_user(Event) ->
         
     end.   
     
-set_password(#{ user := User, pass := Pass} = Event) ->
+set_password(#{ user := User} = Event) ->
     ?INFO_MSG("Updating SIP password for user: ~p~n", [User]),
     CAI3G = em_cai3g_envelope:set_ims_pass(Event),
-    ok = em_ema:request(CAI3G),
-    em_srd:set_pass(User, Pass).
+    ok = em_ema:request(CAI3G).
     
 set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
     CContext = em_srd:get_phonecontext(User),
@@ -104,8 +103,9 @@ set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
     case Context == CContext of
         true -> ok;
         false -> Event1 = maps:put(pubid, PubId, Event),
-                 em_ema_server:update_hss_phonecontext(Event1),
-                 em_srd:set_phonecontext(User, Context)
+            em_srd:set_phonecontext(User, Context),
+            CAI3G = em_cai3g_envelope:set_ims_phonecontext(Event1),
+            ok = em_ema:request(CAI3G)
     end.
     
 %%%===================================================================

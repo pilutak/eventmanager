@@ -15,6 +15,7 @@
 -module(em_events).
 
 -export([process/3]).
+-export([processors/0]).
 -include("../include/em.hrl").
 
 
@@ -71,12 +72,11 @@ processor(Id, modify_service, Message) ->
     % if the PubId field is present, if not, the request is ignored.
     case fix_nil(PublicUserIdentity) of
         undefined -> ok;
-        _ -> ok = em_manager_hss:modify_user(Event),
-                  em_srd:complete_event(Id)
+        _ -> ok = em_manager_hss:modify_user(Event)
+    end,
+    em_srd:complete_event(Id);
         
-    end;
-        
-processor(_Id, modify_group_vp, Message) ->
+processor(Id, modify_group_vp, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
@@ -104,9 +104,10 @@ processor(_Id, modify_group_vp, Message) ->
             
         true ->
             em_manager_hss:modify_user(Event)
-    end;
+    end,
+    em_srd:complete_event(Id);
 
-processor(_Id, modify_user_vm, Message) ->
+processor(Id, modify_user_vm, Message) ->
     ?INFO_MSG("Start processing vmail: ~n", []), 
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
@@ -124,9 +125,10 @@ processor(_Id, modify_user_vm, Message) ->
         current_mailuser   => em_srd:get_vmail_user(UserName),
         current_mailpass   => em_srd:get_vmail_pass(UserName)
     },
-    em_processor_vmail:modify(Event);
+    em_processor_vmail:modify(Event),
+    em_srd:complete_event(Id);
         
-processor(_Id, create_user, Message) ->
+processor(Id, create_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [UserId] = em_utils:get_elements(userId, InsideCommand),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
@@ -145,10 +147,11 @@ processor(_Id, create_user, Message) ->
         phone       => "NODATA",
         pass        => em_utils:randchar(14)
     },
-    ok = em_manager_hss:create_user(Event);
+    ok = em_manager_hss:create_user(Event),
+    em_srd:complete_event(Id);
     
     
-processor(_Id, modify_user, Message) ->
+processor(Id, modify_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [P] = em_utils:get_elements(phoneNumber, InsideCommand),
@@ -221,10 +224,11 @@ processor(_Id, modify_user, Message) ->
              },
              em_manager_hss:modify_trunk_user(Event1)
              
-     end;  
+     end,
+     em_srd:complete_event(Id);  
          
 
-processor(_Id, delete_service, Message) ->
+processor(Id, delete_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceUserId] = em_utils:get_elements(serviceUserId, InsideCommand),
     User = em_utils:get_element_text(ServiceUserId),
@@ -233,9 +237,10 @@ processor(_Id, delete_service, Message) ->
         user => User,
         association => em_utils:md5_hex(User)
     },
-    em_manager_hss:delete_user(Event);
+    em_manager_hss:delete_user(Event),
+    em_srd:complete_event(Id);
 
-processor(_Id, delete_user, Message) ->
+processor(Id, delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [UserId] = em_utils:get_elements(userId, InsideCommand),
     User = em_utils:get_element_text(UserId),
@@ -244,9 +249,10 @@ processor(_Id, delete_user, Message) ->
         user => User,
         association => em_utils:md5_hex(User)
     },
-    em_manager_hss:delete_user(Event);
+    em_manager_hss:delete_user(Event),
+    em_srd:complete_event(Id);
 
-processor(_Id, set_password, Message) ->
+processor(Id, set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [P] = em_utils:get_elements(newPassword, InsideCommand),
@@ -258,9 +264,10 @@ processor(_Id, set_password, Message) ->
         association => em_utils:md5_hex(UserName),
         pass => Pass
     },
-    em_manager_hss:set_password(Event);
+    em_manager_hss:set_password(Event),
+    em_srd:complete_event(Id);
     
-processor(_Id, create_trunk, Message) ->
+processor(Id, create_trunk, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     [SipPassWord] = em_utils:get_elements(sipAuthenticationPassword, InsideCommand),
@@ -286,10 +293,11 @@ processor(_Id, create_trunk, Message) ->
         pass        => SipPass
     },    
     %em_processor_trunk:create_user(Event);
-    em_manager_hss:create_user(Event);
+    em_manager_hss:create_user(Event),
+    em_srd:complete_event(Id);
     
 
-processor(_Id, delete_group, Message) ->
+processor(Id, delete_group, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [G] = em_utils:get_elements(groupId, InsideCommand),
     GroupId = em_utils:get_element_text(G),
@@ -301,19 +309,22 @@ processor(_Id, delete_group, Message) ->
             {I1} = I,
             I2 = binary_to_list(I1),
             em_processor_user:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
-        end, Users);
+        end, Users),
+    em_srd:complete_event(Id);
 
-processor(_Id, create_domain, Message) ->
+processor(Id, create_domain, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
-    em_processor_vmail:create_domain(Domain);
+    em_processor_vmail:create_domain(Domain),
+    em_srd:complete_event(Id);
 
-processor(_Id, delete_domain, Message) ->
+processor(Id, delete_domain, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
-    em_processor_vmail:delete_domain(Domain);
+    em_processor_vmail:delete_domain(Domain),
+    em_srd:complete_event(Id);
 
 
 processor(_Id, ignored, _Message) ->

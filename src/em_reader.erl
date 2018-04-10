@@ -105,7 +105,8 @@ process("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n", State) ->
 
 process(Data, State) ->
     {UserId, CommandType, Message} = top_parser(Data),
-    Id = persist_event(UserId, CommandType, Data),
+    
+    Id = persist_event(maps:is_key(CommandType, em_events:processors()), UserId, CommandType, Data),
     Pid = spawn_link(em_events, process, [Id, CommandType, Message]),
     await_result(Pid, Id),
     loop(State).
@@ -133,7 +134,7 @@ parser_message('BroadsoftDocument', Data)->
     %{em_utils:get_element_attributes('xsi:type',Command),Command};
 
 parser_message(_,_)->
-    {ignored, ignored,undefined}.
+    {ignored, ignored, undefined}.
     
     
 await_result(Pid,Id) ->
@@ -146,23 +147,31 @@ await_result(Pid,Id) ->
             ok;
         {'EXIT', Pid, _ } -> 
             %?ERROR_MSG("EXIT other: ~p, ~p", [Pid, Reason]),
-            fail_event(Id),
+            case Id of
+                ignored -> ok;
+                Id -> fail_event(Id)
+            end,
             ok
     after 8000 ->
             %?ERROR_MSG("Event process timeout: ~p", [Pid]),
             timeout
     end.
 
-persist_event(_, ignored, undefined) ->
+persist_event(_ ,_ ,ignored, undefined) ->
     ignored;
-persist_event(_, ignored, _) ->
+persist_event(_,_ ,ignored, _) ->
     ignored;
-    
-persist_event(UserId, CommandType, Data) ->
-    em_srd:insert_event(UserId, CommandType, Data).
+persist_event(true, UserId, CommandType, Data) ->
+    em_srd:insert_event(UserId, CommandType, Data);
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
+persist_event(false, UserId, CommandType, Data) ->
+    em_srd:insert_white_event(UserId, CommandType, Data).
+    %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
+
+
     
 fail_event(Id) ->
     em_srd:fail_event(Id).
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
+
             

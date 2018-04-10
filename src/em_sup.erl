@@ -49,4 +49,4 @@ init([]) ->
         [elli]},
     
     {ok,{{one_for_one,10,1},
-	 [EMOCIRSUP, EMA, ElliSpec]}}.    
+	 [ElliSpec, EMA, EMOCIRSUP]}}.    
