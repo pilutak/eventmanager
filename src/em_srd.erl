@@ -254,7 +254,7 @@ set_phonecontext(UserId, PhoneContext)->
 %%%===================================================================
 connect() ->
     {ok, PGHost} = application:get_env(em, pg_host),
-    {ok, C} = epgsql:connect(PGHost, "srd", "srd", [{database, "srd"},{timeout, 4000}]),
+    {ok, C} = epgsql:connect(PGHost, "srdadmin", "srdadmin", [{database, "srd"},{timeout, 4000}]),
     C.
 
 event_to_json({Id, User, Command, Status, Inserted}) ->
