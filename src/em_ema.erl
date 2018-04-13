@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {session, ema_host, ema_user, ema_pass}).
+-record(state, {ema_host, ema_user, ema_pass}).
 
 %%%===================================================================
 %%% API
@@ -64,11 +64,7 @@ start_link() ->
 init([]) ->
     process_flag(trap_exit, true),
     {ok,{Host, User, Pass}} = application:get_env(em, ema),
-    
-    Session = open_session(Host, User, Pass),
-    erlang:send_after(300000, self(), {session_refresh, Session}),
-    
-    {ok, #state{ema_host = Host, ema_user = User, ema_pass = Pass, session = Session}}.
+    {ok, #state{ema_host = Host, ema_user = User, ema_pass = Pass}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -84,13 +80,17 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-handle_call({send_request, SoapEnv}, _From, State=#state{session = Session, ema_host = Host}) ->
+handle_call({send_request, SoapEnv}, _From, State=#state{ema_host = Host, ema_user = User, ema_pass = Pass}) ->
+    Session = open_session(Host, User, Pass),    
     Request = em_auth:add_session_id(Session, SoapEnv),
     case send(Request, Host) of
-        {ok, _} -> {reply, ok, State};
+        {ok, _} ->
+            close_session(Session, Host),
+            {reply, ok, State};
         % It is OK to delete a non existing association
-        {error, {"4006", "13005"}} -> {reply, ok, State};
+        {error, {"4006", "13005"}} -> 
+            close_session(Session, Host),
+            {reply, ok, State};
         {error, Err} -> exit(Err)
     end;
     
@@ -121,14 +121,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({session_refresh, Session}, State=#state{ema_host = Host, ema_user = User, ema_pass = Pass}) ->
-    NewSession = open_session(Host, User, Pass),
-    NewState = update_session(State#state{session = NewSession}),
-    close_session(Session, Host),
-    erlang:send_after(300000, self(), {session_refresh, NewSession}),
-    ?INFO_MSG("Session has been refreshed, old:~p new: ~p~n", [Session, NewSession]),
-    {noreply, NewState};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -193,10 +185,5 @@ send(Request, Host) ->
             %?INFO_MSG("Error towards EMA: ~p", [Reason]),
             exit(Reason)
     end. 
-
-
-update_session(State) ->
-    State.
-
 
 
