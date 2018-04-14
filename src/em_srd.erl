@@ -17,12 +17,6 @@
  
 -export([
     create_user/1,
-    insert_event/3,
-    insert_white_event/3,
-    get_events/0,
-    complete_event/1,
-    set_white_event/1,
-    fail_event/1,
     delete_user/1,
     get_users/1,
     set_e164/1,
@@ -58,62 +52,6 @@ create_user(IMSAssociation) ->
     C = connect(),
     {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext, association_id, created) values ($1,$2,$3,$4,'tg.gl',$5, current_timestamp)", [Id,GroupId,PubId,Type,AssociationId]),
     epgsql:close(C).
-
-insert_event(UserId, Command, Event) ->    
-    C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into srd_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "pending"]),
-    epgsql:close(C),
-    case Rows of
-        [] -> undefined;
-        _ -> [{R}] = Rows,
-             R
-             %binary_to_list(R)
-    end.
-
-
-insert_white_event(UserId, Command, Event) ->    
-    C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into srd_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "ignored"]),
-    epgsql:close(C),
-    case Rows of
-        [] -> undefined;
-        _ -> [{R}] = Rows,
-             R
-             %binary_to_list(R)
-    end.
-
-
-get_events() ->
-    C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from srd_event WHERE inserted > current_date - integer '7' ORDER BY inserted ASC", []),
-    ok = epgsql:close(C),    
-    case Rows of
-        [] -> [];
-        _ -> Rows,
-            %?INFO_MSG("Rows: ~p~n", [Rows]), 
-            [event_to_json(P) || P <- Rows]
-    end.
-
-
-
-complete_event(Id) ->
-    C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["completed",Id]),
-    epgsql:close(C).
-
-set_white_event(Id) ->
-    C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["ignored",Id]),
-    epgsql:close(C).
-
-
-
-fail_event(Id) ->
-    C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["failed",Id]),
-    epgsql:close(C).
-
-
     
 delete_user(IMSAssociation) ->
     Id = maps:get(user, IMSAssociation),
@@ -253,10 +191,12 @@ set_phonecontext(UserId, PhoneContext)->
 %%% Internal functions
 %%%===================================================================
 connect() ->
-    {ok, PGHost} = application:get_env(em, pg_host),
-    {ok, C} = epgsql:connect(PGHost, "srdadmin", "srdadmin", [{database, "srd"},{timeout, 4000}]),
+    
+    {ok, Args} = application:get_env(em, em_srd),
+    Hostname = proplists:get_value(hostname, Args),
+    Database = proplists:get_value(database, Args),
+    Username = proplists:get_value(username, Args),
+    Password = proplists:get_value(password, Args),
+    
+    {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 4000}]),
     C.
-
-event_to_json({Id, User, Command, Status, Inserted}) ->
-    %?INFO_MSG("Event to JSON: ~p~n", [Command]), 
-	#{id=>Id, event=>Command, user=>User, status=>Status, timestamp=>Inserted}.

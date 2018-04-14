@@ -162,16 +162,16 @@ persist_event(_ ,_ ,ignored, undefined) ->
 persist_event(_,_ ,ignored, _) ->
     ignored;
 persist_event(true, UserId, CommandType, Data) ->
-    em_srd:insert_event(UserId, CommandType, Data);
+    em_db:insert_event(UserId, CommandType, Data);
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
 persist_event(false, UserId, CommandType, Data) ->
-    em_srd:insert_white_event(UserId, CommandType, Data).
+    em_db:insert_white_event(UserId, CommandType, Data).
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
 
 
     
 fail_event(Id) ->
-    em_srd:fail_event(Id).
+    em_db:fail_event(Id).
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
 
             

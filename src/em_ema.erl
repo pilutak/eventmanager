@@ -63,8 +63,16 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    {ok,{Host, User, Pass}} = application:get_env(em, ema),
-    {ok, #state{ema_host = Host, ema_user = User, ema_pass = Pass}}.
+
+    {ok, Args} = application:get_env(em, em_ema),
+    Hostname = proplists:get_value(hostname, Args),
+    Port = proplists:get_value(port, Args),
+    Url = proplists:get_value(url, Args),
+    Username = proplists:get_value(username, Args),
+    Password = proplists:get_value(password, Args),
+    
+    Resource = "http://" ++ Hostname ++ ":" ++ Port ++ Url, 
+    {ok, #state{ema_host = Resource, ema_user = Username, ema_pass = Password}}.
 
 %%--------------------------------------------------------------------
 %% @private

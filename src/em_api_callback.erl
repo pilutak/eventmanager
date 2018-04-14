@@ -17,7 +17,7 @@ handle('GET',[<<"alivecheck">>], _Req) ->
 
 handle('GET', [<<"events">>], _Req) ->
 	
-	Response = em_srd:get_events(),
+	Response = em_db:get_events(),
 	%Response = #{'id' => 1, 'user' => <<"admin">>, command => <<"UserAdd">>, status => <<"completed">>},
     %Response1 = jsx:encode(Response),    
 	ResponseBody = term_to_json(Response),

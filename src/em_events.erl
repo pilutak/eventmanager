@@ -46,7 +46,7 @@ processor(Id, create_service, Message) ->
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 processor(Id, modify_service, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -74,7 +74,7 @@ processor(Id, modify_service, Message) ->
         undefined -> ok;
         _ -> ok = em_manager_hss:modify_user(Event)
     end,
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
         
 processor(Id, modify_group_vp, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -105,7 +105,7 @@ processor(Id, modify_group_vp, Message) ->
         true ->
             em_manager_hss:modify_user(Event)
     end,
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 processor(Id, modify_user_vm, Message) ->
     ?INFO_MSG("Start processing vmail: ~n", []), 
@@ -126,7 +126,7 @@ processor(Id, modify_user_vm, Message) ->
         current_mailpass   => em_srd:get_vmail_pass(UserName)
     },
     em_processor_vmail:modify(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
         
 processor(Id, create_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -148,7 +148,7 @@ processor(Id, create_user, Message) ->
         pass        => em_utils:randchar(14)
     },
     ok = em_manager_hss:create_user(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
     
     
 processor(Id, modify_user, Message) ->
@@ -225,7 +225,7 @@ processor(Id, modify_user, Message) ->
              em_manager_hss:modify_trunk_user(Event1)
              
      end,
-     em_srd:complete_event(Id);  
+     em_db:complete_event(Id);  
          
 
 processor(Id, delete_service, Message) ->
@@ -238,7 +238,7 @@ processor(Id, delete_service, Message) ->
         association => em_utils:md5_hex(User)
     },
     em_manager_hss:delete_user(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 processor(Id, delete_user, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -250,7 +250,7 @@ processor(Id, delete_user, Message) ->
         association => em_utils:md5_hex(User)
     },
     em_manager_hss:delete_user(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 processor(Id, set_password, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -265,7 +265,7 @@ processor(Id, set_password, Message) ->
         pass => Pass
     },
     em_manager_hss:set_password(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
     
 processor(Id, create_trunk, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -294,7 +294,7 @@ processor(Id, create_trunk, Message) ->
     },    
     %em_processor_trunk:create_user(Event);
     em_manager_hss:create_user(Event),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
     
 
 processor(Id, delete_group, Message) ->
@@ -310,21 +310,21 @@ processor(Id, delete_group, Message) ->
             I2 = binary_to_list(I1),
             em_hss_managerr:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
         end, Users),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 processor(Id, create_domain, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
     em_processor_vmail:create_domain(Domain),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 processor(Id, delete_domain, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
     em_processor_vmail:delete_domain(Domain),
-    em_srd:complete_event(Id);
+    em_db:complete_event(Id);
 
 
 processor(_Id, ignored, _Message) ->
