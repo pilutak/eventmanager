@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {ema_host, ema_user, ema_pass}).
+-record(state, {ema_hosts, session}).
 
 %%%===================================================================
 %%% API
@@ -65,14 +65,7 @@ init([]) ->
     process_flag(trap_exit, true),
 
     {ok, Args} = application:get_env(em, em_ema),
-    Hostname = proplists:get_value(hostname, Args),
-    Port = proplists:get_value(port, Args),
-    Url = proplists:get_value(url, Args),
-    Username = proplists:get_value(username, Args),
-    Password = proplists:get_value(password, Args),
-    
-    Resource = "http://" ++ Hostname ++ ":" ++ Port ++ Url, 
-    {ok, #state{ema_host = Resource, ema_user = Username, ema_pass = Password}}.
+    {ok, #state{ema_hosts = Args}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,16 +81,17 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({send_request, SoapEnv}, _From, State=#state{ema_host = Host, ema_user = User, ema_pass = Pass}) ->
-    Session = open_session(Host, User, Pass),    
-    Request = em_auth:add_session_id(Session, SoapEnv),
-    case send(Request, Host) of
+handle_call({send_request, SoapEnv}, _From, State) ->
+    
+    {Resource, SessionId} = open_session(State),    
+    Request = em_auth:add_session_id(SessionId, SoapEnv),
+    case send(Request, Resource) of
         {ok, _} ->
-            close_session(Session, Host),
+            close_session(SessionId, Resource),
             {reply, ok, State};
         % It is OK to delete a non existing association
         {error, {"4006", "13005"}} -> 
-            close_session(Session, Host),
+            close_session(SessionId, Resource),
             {reply, ok, State};
         {error, Err} -> exit(Err)
     end;
@@ -160,19 +154,48 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-open_session(Host, User, Pass) ->
-    SoapEnv = em_cai3g_envelope:login(User, Pass),
-    case send(SoapEnv, Host) of
+open_session(State=#state{ema_hosts = Hosts}) ->
+    
+    Primary = proplists:get_value(primary, Hosts),
+    Hostname = proplists:get_value(hostname, Primary),
+    Port = proplists:get_value(port, Primary),
+    Url = proplists:get_value(url, Primary),
+    Username = proplists:get_value(username, Primary),
+    Password = proplists:get_value(password, Primary),
+    Resource = "http://" ++ Hostname ++ ":" ++ Port ++ Url, 
+    
+    SoapEnv = em_cai3g_envelope:login(Username, Password),
+    case send(SoapEnv, Resource) of
         {ok, Body} ->
-            {ok, Session} = em_interface_cai3g_parser:login_response({ok, Body}),
-            ?INFO_MSG("EMA session created: ~p~n", [Session]),
-            Session;
+            {ok, SessionId} = em_interface_cai3g_parser:login_response({ok, Body}),
+            ?INFO_MSG("EMA session created on primary EMA: ~p~n", [SessionId]),
+            {Resource, SessionId};
         {error, _} -> 
-            ?INFO_MSG("EMA session retrying in 5000 ms: ~n", []),
-            timer:sleep(5000),
-            open_session(Host, User, Pass)
+            ?INFO_MSG("EMA session retrying on secondary EMA: ~n", []),
+            open_session(secondary, State)
     end.
     
+open_session(secondary, #state{ema_hosts = Hosts}) ->
+    
+    Secondary = proplists:get_value(secondary, Hosts),
+    Hostname = proplists:get_value(hostname, Secondary),
+    Port = proplists:get_value(port, Secondary),
+    Url = proplists:get_value(url, Secondary),
+    Username = proplists:get_value(username, Secondary),
+    Password = proplists:get_value(password, Secondary),
+    Resource = "http://" ++ Hostname ++ ":" ++ Port ++ Url, 
+    
+    SoapEnv = em_cai3g_envelope:login(Username, Password),
+    case send(SoapEnv, Resource) of
+        {ok, Body} ->
+            {ok, SessionId} = em_interface_cai3g_parser:login_response({ok, Body}),
+            ?INFO_MSG("EMA session created on secondary EMA: ~p~n", [SessionId]),
+            {Resource, SessionId};
+        {error, Reason} -> 
+            ?ERROR_MSG("Giving up contactig EMA (tried both primary and secodary): ~n", []),
+            exit(Reason)
+    end.
+                
 close_session(Session, Host) ->
     {ok, _} = em_interface_cai3g_parser:logout_response(send(em_cai3g_envelope:logout(Session), Host)).
   
@@ -187,7 +210,7 @@ send(Request, Host) ->
             %?LOG("HTTP Status Code unexpected ~p ~n waiting ~p miliseconds ~n",OtherStatus, 5000),
             exit(http_code_unexpected);
         {error, {failed_connect, Error}} ->
-            ?INFO_MSG("Connect failed towards EMA: ~n", []),
+            ?INFO_MSG("Connect failed towards EMA: ~p~n", [Host]),
             {error, Error};
         {error,Reason} ->
             %?INFO_MSG("Error towards EMA: ~p", [Reason]),

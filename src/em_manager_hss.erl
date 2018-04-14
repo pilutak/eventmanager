@@ -21,11 +21,14 @@
 %%%===================================================================
 create_user(Event) ->
     ?INFO_MSG("Creating user: ~p~n", [maps:get(user, Event)]),
-    create_ims_association(Event).
+    create_ims_association(Event),
+    ?INFO_MSG("Created user: ~p~n", [maps:get(user, Event)]).
     
 delete_user(Event) ->
     ?INFO_MSG("Deleting user: ~p~n", [maps:get(user, Event)]),
-    delete_ims_association(Event).
+    delete_ims_association(Event),
+    ?INFO_MSG("Deleted user: ~p~n", [maps:get(user, Event)]).
+    
         
 modify_user(Event) ->
     ?INFO_MSG("Modifying user: ~p~n", [maps:get(user, Event)]),    
@@ -346,7 +349,6 @@ delete_ims_association(Event) ->
     ok = em_srd:delete_user(Event),
     CAI3G1 = em_cai3g_envelope:delete_ims_subscriber(Event),
     em_ema:request(CAI3G1).
-
 
 plan_pubid_change(nil, _X, _X) ->
     ignore;
