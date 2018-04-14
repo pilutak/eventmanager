@@ -31,7 +31,7 @@
 
 insert_event(UserId, Command, Event) ->    
     C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into srd_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "pending"]),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "pending"]),
     epgsql:close(C),
     case Rows of
         [] -> undefined;
@@ -42,7 +42,7 @@ insert_event(UserId, Command, Event) ->
 
 insert_white_event(UserId, Command, Event) ->    
     C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into srd_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "ignored"]),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "ignored"]),
     epgsql:close(C),
     case Rows of
         [] -> undefined;
@@ -53,7 +53,7 @@ insert_white_event(UserId, Command, Event) ->
 
 get_events() ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from srd_event WHERE inserted > current_date - integer '7' ORDER BY inserted ASC", []),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE inserted > current_date - integer '7' ORDER BY inserted ASC", []),
     ok = epgsql:close(C),    
     case Rows of
         [] -> [];
@@ -64,17 +64,17 @@ get_events() ->
 
 complete_event(Id) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["completed",Id]),
+    {ok, _} = epgsql:equery(C, "update em_event set status=$1 where id=$2", ["completed",Id]),
     epgsql:close(C).
 
 set_white_event(Id) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["ignored",Id]),
+    {ok, _} = epgsql:equery(C, "update em_event set status=$1 where id=$2", ["ignored",Id]),
     epgsql:close(C).
 
 fail_event(Id) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_event set status=$1 where id=$2", ["failed",Id]),
+    {ok, _} = epgsql:equery(C, "update em_event set status=$1 where id=$2", ["failed",Id]),
     epgsql:close(C).
 
 
