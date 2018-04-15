@@ -18,7 +18,7 @@
 -export([
     insert_event/3,
     insert_white_event/3,
-    get_events/0,
+    get_events/1,
     complete_event/1,
     set_white_event/1,
     fail_event/1
@@ -51,7 +51,7 @@ insert_white_event(UserId, Command, Event) ->
              %binary_to_list(R)
     end.
 
-get_events() ->
+get_events(<<"undefined">>) ->
     C = connect(),
     {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE inserted > current_date - integer '7' ORDER BY inserted ASC", []),
     ok = epgsql:close(C),    
@@ -60,7 +60,20 @@ get_events() ->
         _ -> Rows,
             %?INFO_MSG("Rows: ~p~n", [Rows]), 
             [event_to_json(P) || P <- Rows]
+    end;
+
+
+get_events(Status) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE status = $1 and inserted > current_date - integer '7' ORDER BY inserted ASC", [Status]),
+    ok = epgsql:close(C),    
+    case Rows of
+        [] -> [];
+        _ -> Rows,
+            %?INFO_MSG("Rows: ~p~n", [Rows]), 
+            [event_to_json(P) || P <- Rows]
     end.
+
 
 complete_event(Id) ->
     C = connect(),
