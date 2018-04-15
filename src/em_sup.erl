@@ -37,6 +37,14 @@ init([]) ->
          5000,
          worker,
         [em_ema]},
+
+    SURGEMAIL =
+        {em_surgemail,
+         {em_surgemail, start_link, []},
+         permanent,
+         5000,
+         worker,
+        [em_surgemail]},
          
          
     ElliOpts = [{callback, em_api_callback}, {port, 8080}],
@@ -49,4 +57,4 @@ init([]) ->
         [elli]},
     
     {ok,{{one_for_one,10,1},
-	 [ElliSpec, EMA, EMOCIRSUP]}}.    
+	 [ElliSpec, EMA, SURGEMAIL, EMOCIRSUP]}}.    
