@@ -18,14 +18,7 @@
 
 %% API
 -export([start_link/0]).
--export([create_domain/1]).
--export([delete_domain/1]).
--export([create_account/2]).
--export([delete_account/1]).
--export([modify/1]).
-
-
-
+-export([request/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -39,39 +32,8 @@
 %%% API
 %%%===================================================================
 
-create_domain(Domain) ->
-    gen_server:call(?SERVER, {create_domain, Domain}).
-
-delete_domain(Domain) ->
-    gen_server:call(?SERVER, {delete_domain, Domain}, 10000).
-
-create_account(MailUser, MailPass) ->
-    gen_server:call(?SERVER, {create_account, MailUser, MailPass}).
-
-delete_account(MailUser) ->
-    gen_server:call(?SERVER, {delete_account, MailUser}, 10000).
-    
-modify(Event) ->
-    User = maps:get(user, Event),
-    MailUser = maps:get(mailuser, Event),
-    MailPass = maps:get(mailpass, Event),
-    CurrentMailUser = maps:get(current_mailuser, Event),
-    
-    case {MailUser, MailPass, CurrentMailUser} of
-        {undefined, undefined, _} -> 
-            ?INFO_MSG("Ignoring (mailuser do not exist): ~n", []), 
-            ok;
-            
-        {X, _, X} -> 
-            ?INFO_MSG("Ignoring (mailuser already set): ~n", []), 
-            ok;
-            
-        {_, _, undefined} -> 
-            ?INFO_MSG("creating vmail accpount: ~p~n", [MailUser]),
-            em_srd:set_vmail(User, MailUser, MailPass),
-            gen_server:call(?SERVER, {create_account, MailUser, MailPass})
-    end.
-    
+request(Request) ->
+    gen_server:call(?SERVER, {send_request, Request}).
     
 %%--------------------------------------------------------------------
 %% @doc
@@ -117,74 +79,9 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({create_domain, Domain}, _From, State=#state{surgemail_hosts = Hosts}) ->
-    Primary = proplists:get_value(primary, Hosts),
-    Username = proplists:get_value(username, Primary),
-    Password = proplists:get_value(password, Primary),
-
-    Param1 = "/cgi/admin.cgi?show=simple_msg.xml&",
-    Param2 = "cmd=global_misc_save&",
-    Param3 = "misc_settings=domain_name,manager_username,manager_password,create_user,create_max&",
-    Param4 = "misc_cmd=special&",
-    Param5 = "domainid=-1&",
-    Param6 = "name=" ++ Domain ++ "&",
-    Param7 = "manager_username=" ++ Username ++ "&",
-    Param8 = "manager_password=" ++ Password ++ "" ,
-    
-    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7 ++ Param8, 
-    
+handle_call({send_request, Request}, _From, State) ->
     {ok, _} = send(Request, State),
     {reply, ok, State};
-
-handle_call({delete_domain, Domain}, _From, State) ->
-    Param1 = "/cgi/admin.cgi?show=simple_msg.xml&",
-    Param2 = "cmd=domain_delete&",
-    Param3 = "domain=" ++ Domain ++ "&",
-    Param4 = "delete_users=true&",
-    Param5 = "delete_files=true",
-    
-    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5, 
-    
-    {ok, _} = send(Request, State),
-    {reply, ok, State};
-
-
-handle_call({create_account, MailUser, MailPass}, _From, State=#state{surgemail_hosts = Hosts}) ->
-    DomainPass = proplists:get_value(domain_password, Hosts),
-    [UserPart, DomainPart] = string:split(MailUser, "@"), 
-    
-    Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
-    Param2 = "cmd=cmd_user_login&",
-    Param3 = "lcmd=user_create&",
-    Param4 = "user_fields=user_id&",
-    Param5 = "username=" ++ "admin@" ++ DomainPart ++ "&",
-    Param6 = "password=" ++ DomainPass ++ "&",
-    Param7 = "lusername=" ++ UserPart ++ "&",
-    Param8 = "lpassword=" ++ MailPass ++ "",
-
-    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7 ++ Param8, 
-    
-    {ok, _} = send(Request, State),
-    {reply, ok, State};
-
-
-handle_call({delete_account, MailUser}, _From, State=#state{surgemail_hosts = Hosts}) ->
-    DomainPass = proplists:get_value(domain_password, Hosts),
-    [UserPart, DomainPart] = string:split(MailUser, "@"), 
-    
-    Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
-    Param2 = "cmd=cmd_user_login&",
-    Param3 = "lcmd=user_delete&",
-    Param4 = "user_fields=user_id&",
-    Param5 = "username=" ++ "admin@" ++ DomainPart ++ "&",
-    Param6 = "password=" ++ DomainPass ++ "&",
-    Param7 = "lusername=" ++ UserPart ++ "&",
-
-    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7, 
-    
-    {ok, _} = send(Request, State),
-    {reply, ok, State};
-
         
 handle_call(_Request, _From, State) ->
     Reply = ok,

@@ -125,7 +125,7 @@ processor(Id, modify_user_vm, Message) ->
         current_mailuser   => em_srd:get_vmail_user(UserName),
         current_mailpass   => em_srd:get_vmail_pass(UserName)
     },
-    em_processor_vmail:modify(Event),
+    em_manager_surgemail:modify(Event),
     em_db:complete_event(Id);
         
 processor(Id, create_user, Message) ->
@@ -316,14 +316,14 @@ processor(Id, create_domain, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
-    em_processor_vmail:create_domain(Domain),
+    em_manager_surgemail:create_domain(Domain),
     em_db:complete_event(Id);
 
 processor(Id, delete_domain, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
-    em_processor_vmail:delete_domain(Domain),
+    em_manager_surgemail:delete_domain(Domain),
     em_db:complete_event(Id);
 
 
