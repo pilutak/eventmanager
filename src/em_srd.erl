@@ -164,7 +164,11 @@ get_vmail_user(UserId) ->
     C = connect(),
     {ok, _, Rows} = epgsql:equery(C, "select trim(vmail_user) from srd_user where id=$1", [UserId]),
     ok = epgsql:close(C),
-    Rows.
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
 
 get_vmail_pass(UserId) ->
     C = connect(),

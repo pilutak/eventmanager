@@ -249,6 +249,8 @@ processor(Id, delete_user, Message) ->
         user => User,
         association => em_utils:md5_hex(User)
     },
+    
+    em_manager_surgemail:delete_account(Event),
     em_manager_hss:delete_user(Event),
     em_db:complete_event(Id);
 
@@ -308,6 +310,7 @@ processor(Id, delete_group, Message) ->
         fun(I) ->
             {I1} = I,
             I2 = binary_to_list(I1),
+            em_surgemail_manager:delete_account(#{user => I2}),
             em_hss_managerr:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
         end, Users),
     em_db:complete_event(Id);
@@ -325,7 +328,6 @@ processor(Id, delete_domain, Message) ->
     Domain = em_utils:get_element_text(D),
     em_manager_surgemail:delete_domain(Domain),
     em_db:complete_event(Id);
-
 
 processor(_Id, ignored, _Message) ->
     ok.

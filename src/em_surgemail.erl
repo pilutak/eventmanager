@@ -143,7 +143,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
   
 send(Request, State=#state{surgemail_hosts = Hosts}) ->
-    ?INFO_MSG("Trying to send request to primary Surgemail: ~n", []), 
+    ?INFO_MSG("Sending request to primary Surgemail ~n", []), 
     Primary = proplists:get_value(primary, Hosts),
     Hostname = proplists:get_value(hostname, Primary),
     Port = proplists:get_value(port, Primary),
@@ -166,7 +166,7 @@ send(Request, State=#state{surgemail_hosts = Hosts}) ->
     end. 
 
 send_secondary(Request, #state{surgemail_hosts = Hosts}) ->
-    ?INFO_MSG("Trying to send request to secondary Surgemail: ~n", []), 
+    ?INFO_MSG("Sending request to secondary Surgemail ~n", []), 
     Secondary = proplists:get_value(secondary, Hosts),
     Hostname = proplists:get_value(hostname, Secondary),
     Port = proplists:get_value(port, Secondary),

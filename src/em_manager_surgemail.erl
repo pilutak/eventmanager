@@ -70,21 +70,13 @@ create_account(MailUser, MailPass) ->
     Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7 ++ Param8, 
     em_surgemail:request(Request).
 
-delete_account(MailUser) ->
-    {ok, Args} = application:get_env(em, em_surgemail),
-    DomainPass = proplists:get_value(domain_password, Args),
-    [UserPart, DomainPart] = string:split(MailUser, "@"), 
+delete_account(#{ user := User }) ->
+    case em_srd:get_vmail_user(User) of
+        undefined -> ok;
+        "NODATA" -> ok;
+        MailUser -> do_delete_account(User, MailUser)
+    end.
     
-    Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
-    Param2 = "cmd=cmd_user_login&",
-    Param3 = "lcmd=user_delete&",
-    Param4 = "user_fields=user_id&",
-    Param5 = "username=" ++ "admin@" ++ DomainPart ++ "&",
-    Param6 = "password=" ++ DomainPass ++ "&",
-    Param7 = "lusername=" ++ UserPart ++ "&",
-
-    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7, 
-    em_surgemail:request(Request).
     
 modify(Event) ->
     User = maps:get(user, Event),
@@ -101,7 +93,7 @@ modify(Event) ->
             ?INFO_MSG("Ignoring (mailuser already set): ~n", []), 
             ok;
             
-        {_, _, undefined} -> 
+        {_, _, "NODATA"} -> 
             ?INFO_MSG("creating vmail accpount: ~p~n", [MailUser]),
             em_srd:set_vmail(User, MailUser, MailPass),
             create_account(MailUser, MailPass)
@@ -110,7 +102,24 @@ modify(Event) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-   
+do_delete_account(User, MailUser) ->
+    ?INFO_MSG("Deleting surgemail account: ~p~n", [MailUser]), 
+    {ok, Args} = application:get_env(em, em_surgemail),
+    DomainPass = proplists:get_value(domain_password, Args),
+    [UserPart, DomainPart] = string:split(MailUser, "@"), 
+    
+    Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
+    Param2 = "cmd=cmd_user_login&",
+    Param3 = "lcmd=user_delete&",
+    Param4 = "user_fields=user_id&",
+    Param5 = "username=" ++ "admin@" ++ DomainPart ++ "&",
+    Param6 = "password=" ++ DomainPass ++ "&",
+    Param7 = "lusername=" ++ UserPart ++ "&",
+
+    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7,
+    em_surgemail:request(Request),
+    em_srd:delete_vmail(User).
+     
    
 %%%===================================================================
 %%% Unit Tests
