@@ -19,21 +19,3 @@
 -define(INFO_MSG(Format, Args),
 	error_logger:info_msg("(~p:~p:~p) " ++ Format,
 			       [self(), ?MODULE, ?LINE | Args])).
-                     
--define(VMAIL_URL,
-  case application:get_env(em, vmail) of
-    undefined -> "http://localhost:7026";
-    {ok,{URL, _User, _Pass}} -> URL
-  end).
-
--define(VMAIL_USER,
-  case application:get_env(em, vmail) of
-    undefined -> "user";
-    {ok,{_URL, User, _Pass}} -> User
-  end).
-
--define(VMAIL_PASS,
-  case application:get_env(em, vmail) of
-    undefined -> "password";
-    {ok,{_URL, _User, Pass}} -> Pass
-  end).
