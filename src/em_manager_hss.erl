@@ -86,7 +86,7 @@ modify_trunk_user(Event) ->
                 execute_plan(Plan2, Event);
         "pilot" -> ?INFO_MSG("Already user type pilot: ~p~n", [User]),
                 Event5 = maps:put(type, 'pilot', Event),
-                Event6 = maps:update(csprofile, ?SIPTRUNKPROFILE_PILOT, Event5),
+                Event6 = maps:update(csprofile, serviceprofile(trunk_pilot), Event5),
                 Plan2 = make_plan(Event6),
                 execute_plan(Plan2, Event6)
         
@@ -372,7 +372,10 @@ plan_phone_change(_X, "NODATA") ->
     create;
 plan_phone_change(_X, _Y) ->
     update.   
-   
+
+serviceprofile(Id) ->
+    {ok, Args} = application:get_env(em, service_profiles),
+    proplists:get_value(Id, Args).
    
 %%%===================================================================
 %%% Unit Tests
