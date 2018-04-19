@@ -31,7 +31,7 @@
 
 insert_event(UserId, Command, Event) ->    
     C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "pending"]),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, timezone('utc', now())) returning id", [UserId, Command, Event, "pending"]),
     epgsql:close(C),
     case Rows of
         [] -> undefined;
@@ -42,7 +42,7 @@ insert_event(UserId, Command, Event) ->
 
 insert_white_event(UserId, Command, Event) ->    
     C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, current_timestamp) returning id", [UserId, Command, Event, "ignored"]),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, timezone('utc', now())) returning id", [UserId, Command, Event, "ignored"]),
     epgsql:close(C),
     case Rows of
         [] -> undefined;
