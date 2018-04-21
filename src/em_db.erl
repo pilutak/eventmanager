@@ -19,6 +19,7 @@
     insert_event/3,
     insert_white_event/3,
     get_events/1,
+    get_event/1,
     complete_event/1,
     set_white_event/1,
     fail_event/1
@@ -59,13 +60,24 @@ get_events(<<"undefined">>) ->
         [] -> [];
         _ -> Rows,
             %?INFO_MSG("Rows: ~p~n", [Rows]), 
-            [event_to_json(P) || P <- Rows]
+            [events_to_json(P) || P <- Rows]
     end;
 
 
 get_events(Status) ->
     C = connect(),
     {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE status = $1 and inserted > current_date - integer '7' ORDER BY inserted ASC", [Status]),
+    ok = epgsql:close(C),    
+    case Rows of
+        [] -> [];
+        _ -> Rows,
+            %?INFO_MSG("Rows: ~p~n", [Rows]), 
+            [events_to_json(P) || P <- Rows]
+    end.
+
+get_event(Id) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select event from em_event WHERE id = $1", [Id]),
     ok = epgsql:close(C),    
     case Rows of
         [] -> [];
@@ -104,6 +116,10 @@ connect() ->
     {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 4000}]),
     C.
 
-event_to_json({Id, User, Command, Status, Inserted}) ->
+events_to_json({Id, User, Command, Status, Inserted}) ->
     %?INFO_MSG("Event to JSON: ~p~n", [Command]), 
 	#{id=>Id, event=>Command, user=>User, status=>Status, timestamp=>Inserted}.
+    
+event_to_json({Event}) ->
+    %?INFO_MSG("Event to JSON: ~p~n", [Command]), 
+	#{event=>Event}.

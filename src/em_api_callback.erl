@@ -24,6 +24,16 @@ handle('GET', [<<"events">>], Req) ->
 	{ok, [{<<"Content-type">>, <<"application/json">>}],
 	ResponseBody};
 
+
+handle('GET', [<<"event">>, Id], _Req) ->
+    Id1 = binary_to_list(Id),
+    Id2 = list_to_integer(Id1),
+	[Response] = em_db:get_event(Id2),
+	ResponseBody = term_to_json(Response),
+	{ok, [{<<"Content-type">>, <<"application/json">>}],
+	ResponseBody};
+
+
 handle(_, _, _Req) ->
     {404, [], <<"Not Found">>}.
 
