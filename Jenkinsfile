@@ -3,10 +3,9 @@ pipeline{
     triggers {pollSCM ('* * * * *')}
     stages {
         stage ("Checkout") {
+            steps {
             // Wipe the workspace so we are building completely clean
             deleteDir()
-            
-            steps {
                 git url: 'https://github.com/timezone4/eventmanager.git'
             }
         }
