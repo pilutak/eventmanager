@@ -1,10 +1,11 @@
 pipeline{
     agent any
     triggers {pollSCM ('* * * * *')}
-    // Wipe the workspace so we are building completely clean
-    deleteDir()
     stages {
         stage ("Checkout") {
+            // Wipe the workspace so we are building completely clean
+            deleteDir()
+            
             steps {
                 git url: 'https://github.com/timezone4/eventmanager.git'
             }
