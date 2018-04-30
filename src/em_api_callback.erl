@@ -42,16 +42,11 @@ handle('POST', [<<"users">>], Req) ->
     %Name = elli_request:post_arg(<<"name">>, Req, <<"undefined">>),
     % Fetch and decode
 
-    io:format("POST IS CALLED!"),
-
     Type = elli_request:post_arg_decoded(<<"type">>, Req, <<"undefined">>),
     Group = elli_request:post_arg_decoded(<<"group">>, Req, <<"undefined">>),
     Id = elli_request:post_arg_decoded(<<"id">>, Req, <<"undefined">>),
     Phone = elli_request:post_arg_decoded(<<"phone">>, Req, <<"undefined">>),
-    
-    io:format(Type),
-    
-    
+        
     create_user(Type, Group, Id, Phone),
     
     %{ok, [], <<"Hello ", Name/binary, " of ", City/binary>>};
