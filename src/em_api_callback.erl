@@ -34,6 +34,32 @@ handle('GET', [<<"event">>, Id], _Req) ->
 	ResponseBody};
 
 
+
+handle('POST', [<<"users">>], Req) ->
+	%Name = elli_request:body(Req),
+	%io:format(Name),
+    %% Fetch a POST argument from the POST body.
+    %Name = elli_request:post_arg(<<"name">>, Req, <<"undefined">>),
+    % Fetch and decode
+
+    io:format("POST IS CALLED!"),
+
+    Type = elli_request:post_arg_decoded(<<"type">>, Req, <<"undefined">>),
+    Group = elli_request:post_arg_decoded(<<"group">>, Req, <<"undefined">>),
+    Id = elli_request:post_arg_decoded(<<"id">>, Req, <<"undefined">>),
+    Phone = elli_request:post_arg_decoded(<<"phone">>, Req, <<"undefined">>),
+    
+    io:format(Type),
+    
+    
+    create_user(Type, Group, Id, Phone),
+    
+    %{ok, [], <<"Hello ", Name/binary, " of ", City/binary>>};
+
+    {ok, [{<<"Content-type">>, <<"application/json; charset=ISO-8859-1">>}],
+    Id};
+
+
 handle(_, _, _Req) ->
     {404, [], <<"Not Found">>}.
 
@@ -43,6 +69,9 @@ handle_event(_Event, _Data, _Args) ->
     ok.
 
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 term_to_json(Term) ->
     jsx:encode(fixup(Term)).
@@ -70,3 +99,89 @@ fixup_key(Term) ->
         T ->
             iolist_to_binary(io_lib:format("~p", [T]))
     end.
+
+    
+create_user(<<"user">>, Group, Id, <<"undefined">>) ->
+    Id1 = binary_to_list(Id),
+    Group1 = binary_to_list(Group),
+    SIPPass = em_srd:get_pass(Id1),
+
+    Event = #{
+        user        => Id1,
+        pubid       => Id1,
+        group       => Group1,
+        type        => 'user',
+        csprofile   => 'IMS_CENTREX_csas02',
+        ispsi       => 'false',
+        isdefault   => 'false',
+        irs         => '1',
+        association => em_utils:md5_hex(Id1),
+        phone       => "NODATA",
+        pass        => SIPPass
+    },
+    %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event);
+        
+create_user(<<"user">>, Group, Id, Phone) ->
+    Id1 = binary_to_list(Id),
+    Group1 = binary_to_list(Group),
+    Phone1 = binary_to_list(Phone),
+    SIPPass = em_srd:get_pass(Id1),
+
+    Event = #{
+        user        => Id1,
+        pubid       => Id1,
+        group       => Group1,
+        type        => 'user',
+        csprofile   => 'IMS_CENTREX_csas02',
+        ispsi       => 'false',
+        isdefault   => 'false',
+        irs         => '1',
+        association => em_utils:md5_hex(Id1),
+        phone       => Phone1,
+        pass        => SIPPass
+    },
+    %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event);
+    
+create_user(<<"virtual">>, Group, Id, <<"undefined">>) ->
+    io:format("CREATE USER WITHOUT PHONE IS CALLED!"),
+    Id1 = binary_to_list(Id),
+    Group1 = binary_to_list(Group),
+
+    Event = #{
+        user        => Id1,
+        pubid       => Id1,
+        group       => Group1,
+        type        => 'virtual',
+        csprofile   => 'IMT_VIRTUAL_csas02',
+        ispsi       => 'true',
+        isdefault   => 'false',
+        irs         => '0',
+        association => em_utils:md5_hex(Id1),
+        phone       => "NODATA"
+    },
+    %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event);
+        
+create_user(<<"virtual">>, Group, Id, Phone) ->
+    Id1 = binary_to_list(Id),
+    Group1 = binary_to_list(Group),
+    Phone1 = binary_to_list(Phone),
+
+    Event = #{
+        user        => Id1,
+        pubid       => Id1,
+        group       => Group1,
+        type        => 'virtual',
+        csprofile   => 'IMT_VIRTUAL_csas02',
+        ispsi       => 'true',
+        isdefault   => 'false',
+        irs         => '0',
+        association => em_utils:md5_hex(Id1),
+        phone       => Phone1
+    },
+    %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event).
+    
+    

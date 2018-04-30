@@ -28,6 +28,7 @@
     get_group/1,
     user_exists/1,
     get_type/1,
+    get_pass/1,
     set_pass/2,
     set_vmail/3,
     delete_vmail/1,
@@ -115,7 +116,19 @@ get_group(Id) ->
         _ -> [{R}] = Rows,
              binary_to_list(R)
     end.
-    
+
+
+get_pass(UserId) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(sip_password) from srd_migration_passwords where id= $1", [UserId]),
+    ok = epgsql:close(C),
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+             binary_to_list(R)
+    end.
+
+
 set_pass(UserId, Pass)->
     C = connect(),
     {ok, _} = epgsql:equery(C, "update srd_user set password=$1, updated=current_timestamp where id=$2", [Pass,UserId]),
