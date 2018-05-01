@@ -310,7 +310,7 @@ processor(Id, delete_group, Message) ->
         fun(I) ->
             {I1} = I,
             I2 = binary_to_list(I1),
-            em_surgemail_manager:delete_account(#{user => I2}),
+            em_manager_surgemail:delete_account(#{user => I2}),
             em_manager_hss:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
         end, Users),
     em_db:complete_event(Id);
