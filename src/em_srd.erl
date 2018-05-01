@@ -120,7 +120,7 @@ get_group(Id) ->
 
 get_pass(UserId) ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select trim(sip_password) from srd_migration_passwords where id= $1", [UserId]),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(password) from srd_migration_passwords where id= $1", [UserId]),
     ok = epgsql:close(C),
     case Rows of
         [] -> undefined;

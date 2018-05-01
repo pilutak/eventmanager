@@ -55,6 +55,33 @@ handle('POST', [<<"users">>], Req) ->
     Id};
 
 
+handle('DELETE', [<<"groups">>, Id], _Req) ->
+	%Name = elli_request:body(Req),
+	%io:format(Name),
+    %% Fetch a POST argument from the POST body.
+    %Name = elli_request:post_arg(<<"name">>, Req, <<"undefined">>),
+    % Fetch and decode
+    
+    GroupId = binary_to_list(Id),
+    Users = em_srd:get_users(GroupId),
+
+    lists:foreach(
+        fun(I) ->
+            {I1} = I,
+            I2 = binary_to_list(I1),
+            em_manager_surgemail:delete_account(#{user => I2}),
+            em_manager_hss:delete_user(#{user => I2, association => em_utils:md5_hex(I2)})
+        end, Users),
+    
+    
+    %{ok, [], <<"Hello ", Name/binary, " of ", City/binary>>};
+
+    %{ok, [{<<"Content-type">>, <<"application/json; charset=ISO-8859-1">>}],
+    %Id};
+    
+    {200, [], <<"deleted!">>};
+
+
 handle(_, _, _Req) ->
     {404, [], <<"Not Found">>}.
 
