@@ -68,6 +68,7 @@ add_ims_subscriber(IMSAssociation) ->
     IRS = maps:get(irs, IMSAssociation),   
     CSProfile = maps:get(csprofile, IMSAssociation),
     Pass = maps:get(pass, IMSAssociation),
+    PhoneContext = maps:get(phonecontext, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\">
    <soapenv:Header>
@@ -101,13 +102,14 @@ add_ims_subscriber(IMSAssociation) ->
                   <hss:configuredServiceProfile configuredServiceProfileId=\"~s\">
                      <hss:configuredServiceProfileId>~s</hss:configuredServiceProfileId>
                   </hss:configuredServiceProfile>
-                  <hss:maxNumberSessions>99</hss:maxNumberSessions> 
+                  <hss:maxNumberSessions>99</hss:maxNumberSessions>
+                  <hss:phoneContext>~s</hss:phoneContext>
                </hss:subscriberServiceProfile>                                
             </hss:CreateIMSAssociation>
          </cai3:MOAttributes>
       </cai3:Create>
    </soapenv:Body>
-</soapenv:Envelope>",[AssociationId, AssociationId, AssociationId, User, User, Pass, PubId, PubId, User, IRS, PubId, PubId, PubId, CSProfile, CSProfile]).
+</soapenv:Envelope>",[AssociationId, AssociationId, AssociationId, User, User, Pass, PubId, PubId, User, IRS, PubId, PubId, PubId, CSProfile, CSProfile, PhoneContext]).
     
 add_ims_virtual_subscriber(IMSAssociation) ->
     User = maps:get(user, IMSAssociation),

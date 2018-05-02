@@ -133,6 +133,13 @@ processor(Id, create_user, Message) ->
     [UserId] = em_utils:get_elements(userId, InsideCommand),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
 
+    % Fetch address/state (used for 112/113 emergency routing)
+    [AD] = em_utils:get_elements(address, InsideCommand),
+    [SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
+    City = em_utils:get_element_text(SP),
+    PhoneContext = maps:get(City, phonecontexts(), "tg.gl"),
+
+
     User = em_utils:get_element_text(UserId),        
     Event = #{
         user        => User,
@@ -145,7 +152,8 @@ processor(Id, create_user, Message) ->
         irs         => '1',
         association => em_utils:md5_hex(User),
         phone       => "NODATA",
-        pass        => em_utils:randchar(14)
+        pass        => em_utils:randchar(14),
+        phonecontext=> PhoneContext
     },
     ok = em_manager_hss:create_user(Event),
     em_db:complete_event(Id);
@@ -399,3 +407,4 @@ phonecontexts() ->
 serviceprofile(Id) ->
     {ok, Args} = application:get_env(em, service_profiles),
     proplists:get_value(Id, Args).
+    
