@@ -172,8 +172,10 @@ processor(Id, modify_user, Message) ->
     % Fetch address/state (used for 112/113 emergency routing)
     [AD] = em_utils:get_elements(address, InsideCommand),
     [SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
-    City = em_utils:get_element_text(SP),
-    PhoneContext = maps:get(City, phonecontexts(), "tg.gl"),
+    %StateProvince = em_utils:get_element_text(SP),
+    StateProvince = fix_nil1(SP),
+    
+    %PhoneContext = maps:get(City1, phonecontexts(), "tg.gl"),
         
     % Fecth endpoint Trunk data
     [F] = em_utils:get_elements(endpoint, InsideCommand),
@@ -185,12 +187,25 @@ processor(Id, modify_user, Message) ->
     UserName = em_utils:get_element_text(U),
     Phone = fix_nil(P),
 
-    ContextEvent = #{
-        user => UserName,
-        association => em_utils:md5_hex(UserName),
-        phonecontext => PhoneContext
-        }, 
-    em_manager_hss:set_phonecontext(ContextEvent),
+    io:format(StateProvince),
+    case StateProvince of
+        undefined -> ok;
+        nil ->
+            ContextEvent = #{
+                user => UserName,
+                association => em_utils:md5_hex(UserName),
+                phonecontext => "tg.gl"
+                }, 
+            em_manager_hss:set_phonecontext(ContextEvent);        
+        _-> 
+            PhoneContext = maps:get(StateProvince, phonecontexts(), undefined),
+            ContextEvent = #{
+                user => UserName,
+                association => em_utils:md5_hex(UserName),
+                phonecontext => PhoneContext
+                }, 
+            em_manager_hss:set_phonecontext(ContextEvent)
+    end,
 
     case TrunkLinePort of
          undefined when Phone == undefined ->
@@ -347,6 +362,18 @@ fix_nil(Element) ->
         {undefined, true} -> nil;
         _ -> Text
     end.
+
+fix_nil1(Element) ->
+    IsNil =  em_utils:get_element_attributes('xsi:nil', Element) =:= "true",
+    io:format(IsNil),
+    Text = em_utils:get_element_text(Element),    
+    
+    case {Text, IsNil} of
+        {undefined, false} -> undefined;
+        {undefined, true} -> nil;
+        _ -> Text
+    end.
+
          
 %% mapping various OCI-R events to functions
 processors() ->

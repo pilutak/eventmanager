@@ -292,7 +292,7 @@ add_ims_serviceprofile(IMSAssociation) ->
     SProfile = PubId,
     CSProfile = maps:get(csprofile, IMSAssociation),
     AssociationId = maps:get(association, IMSAssociation),
-    
+    PhoneContext = maps:get(phonecontext, IMSAssociation),
     io_lib:format(
     "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cai3=\"http://schemas.ericsson.com/cai3g1.2/\" xmlns:hss=\"http://schemas.ericsson.com/ma/HSS/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
    <soapenv:Header>
@@ -311,12 +311,13 @@ add_ims_serviceprofile(IMSAssociation) ->
                   <hss:configuredServiceProfile configuredServiceProfileId=\"~s\">
                      <hss:configuredServiceProfileId>~s</hss:configuredServiceProfileId>
                   </hss:configuredServiceProfile>
+                  <hss:phoneContext>~s</hss:phoneContext>
                </hss:subscriberServiceProfile>
             </hss:SetIMSAssociation>
          </cai3:MOAttributes>
       </cai3:Set>
    </soapenv:Body>
-</soapenv:Envelope>",[AssociationId, AssociationId, SProfile, SProfile, CSProfile, CSProfile]).
+</soapenv:Envelope>",[AssociationId, AssociationId, SProfile, SProfile, CSProfile, CSProfile, PhoneContext]).
 
 delete_ims_serviceprofile(AssociationId, SProfile) ->
     io_lib:format(

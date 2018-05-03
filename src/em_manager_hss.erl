@@ -98,12 +98,13 @@ set_password(#{ user := User} = Event) ->
     ok = em_ema:request(CAI3G).
     
 set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
-    ?INFO_MSG("Updating phone context for user: ~p~n", [User]),
     CContext = em_srd:get_phonecontext(User),
     PubId = em_srd:get_sipuri(Event),
     case Context == CContext of
         true -> ok;
-        false -> Event1 = maps:put(pubid, PubId, Event),
+        false -> 
+            ?INFO_MSG("Updating phone context for user: ~p~n", [User]),
+            Event1 = maps:put(pubid, PubId, Event),
             em_srd:set_phonecontext(User, Context),
             CAI3G = em_cai3g_envelope:set_ims_phonecontext(Event1),
             ok = em_ema:request(CAI3G)
@@ -244,6 +245,8 @@ create_phone(Event) ->
 delete_impu_sip(#{ user := User, association := AId } = Event) ->
     CPubId = em_srd:get_sipuri(Event),
     CPhone = em_srd:get_e164(Event),
+    CContext = em_srd:get_phonecontext(User),
+    
     
     case CPhone of
         "NODATA" -> ok;        
@@ -258,24 +261,26 @@ delete_impu_sip(#{ user := User, association := AId } = Event) ->
     ok = em_ema:request(CAI3G2),
     
     Event1 = maps:update(pubid, User, Event),
-    ok = em_srd:set_sipuri(Event1),
+    Event2 = maps:put(phonecontext, CContext, Event1),
+    ok = em_srd:set_sipuri(Event2),
 
-    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event1),
+    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event2),
     ok = em_ema:request(CAI3G3),
 
-    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event1),
+    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event2),
     ok = em_ema:request(CAI3G4),
     
     case CPhone of
         "NODATA" -> ok;        
         _ ->
-            ok = create_phone(Event1)
+            ok = create_phone(Event2)
     end.
 
 % special handling of users
 update_impu_sip(#{ user := User, association := AId, pubid := undefined } = Event) ->
     CPubId = em_srd:get_sipuri(Event),
     CPhone = em_srd:get_e164(Event),
+    CContext = em_srd:get_phonecontext(User),
     
     case CPhone of
         "NODATA" -> ok;        
@@ -290,8 +295,42 @@ update_impu_sip(#{ user := User, association := AId, pubid := undefined } = Even
     ok = em_ema:request(CAI3G2),
     
     Event1 = maps:update(pubid, User, Event),
-    ok = em_srd:set_sipuri(Event1),
+    Event2 = maps:put(phonecontext, CContext, Event1),
     
+    ok = em_srd:set_sipuri(Event2),
+    
+    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event2),
+    ok = em_ema:request(CAI3G3),
+
+    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event2),
+    ok = em_ema:request(CAI3G4),
+    
+    case CPhone of
+        "NODATA" -> ok;        
+        _ ->
+            Event2 = maps:update(phone, CPhone, Event2),
+            ok = create_phone(Event2)
+    end;
+
+update_impu_sip(#{ user := User, association := AId } = Event) ->
+    CPubId = em_srd:get_sipuri(Event),
+    CPhone = em_srd:get_e164(Event),
+    CContext = em_srd:get_phonecontext(User),
+    
+    case CPhone of
+        "NODATA" -> ok;        
+        _ ->
+            delete_phone(Event)
+    end,
+
+    CAI3G1 = em_cai3g_envelope:delete_ims_pubid(AId, CPubId),
+    ok = em_ema:request(CAI3G1),
+        
+    CAI3G2 = em_cai3g_envelope:delete_ims_serviceprofile(AId, CPubId),
+    ok = em_ema:request(CAI3G2),
+    
+    Event1 = maps:put(phonecontext, CContext, Event),
+    ok = em_srd:set_sipuri(Event1),
     CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event1),
     ok = em_ema:request(CAI3G3),
 
@@ -303,36 +342,6 @@ update_impu_sip(#{ user := User, association := AId, pubid := undefined } = Even
         _ ->
             Event2 = maps:update(phone, CPhone, Event1),
             ok = create_phone(Event2)
-    end;
-
-update_impu_sip(#{ association := AId } = Event) ->
-    CPubId = em_srd:get_sipuri(Event),
-    CPhone = em_srd:get_e164(Event),
-    
-    case CPhone of
-        "NODATA" -> ok;        
-        _ ->
-            delete_phone(Event)
-    end,
-
-    CAI3G1 = em_cai3g_envelope:delete_ims_pubid(AId, CPubId),
-    ok = em_ema:request(CAI3G1),
-        
-    CAI3G2 = em_cai3g_envelope:delete_ims_serviceprofile(AId, CPubId),
-    ok = em_ema:request(CAI3G2),
-    
-    ok = em_srd:set_sipuri(Event),
-    CAI3G3 = em_cai3g_envelope:add_ims_serviceprofile(Event),
-    ok = em_ema:request(CAI3G3),
-
-    CAI3G4 = em_cai3g_envelope:add_ims_pubid(Event),
-    ok = em_ema:request(CAI3G4),
-    
-    case CPhone of
-        "NODATA" -> ok;        
-        _ ->
-            Event1 = maps:update(phone, CPhone, Event),
-            ok = create_phone(Event1)
     end.
 
 delete_ims_association(Event) ->
