@@ -98,11 +98,9 @@ set_password(#{ user := User} = Event) ->
     ok = em_ema:request(CAI3G).
     
 set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
+    ?INFO_MSG("Updating phone context for user: ~p~n", [User]),
     CContext = em_srd:get_phonecontext(User),
     PubId = em_srd:get_sipuri(Event),
-     ?INFO_MSG("PUBID IS: ~p~n", [PubId]),
-     ?INFO_MSG("CONTEXT IS: ~p~n", [Context]),
-     ?INFO_MSG("CCOntext IS: ~p~n", [CContext]),
     case Context == CContext of
         true -> ok;
         false -> Event1 = maps:put(pubid, PubId, Event),
