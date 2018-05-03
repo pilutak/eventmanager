@@ -173,7 +173,7 @@ processor(Id, modify_user, Message) ->
     [AD] = em_utils:get_elements(address, InsideCommand),
     [SP] = em_utils:get_elements(stateOrProvince, em_utils:get_element_childs(AD)),
     City = em_utils:get_element_text(SP),
-    PhoneContext = maps:get(City, phonecontexts(), undefined),
+    PhoneContext = maps:get(City, phonecontexts(), "tg.gl"),
         
     % Fecth endpoint Trunk data
     [F] = em_utils:get_elements(endpoint, InsideCommand),
@@ -185,17 +185,12 @@ processor(Id, modify_user, Message) ->
     UserName = em_utils:get_element_text(U),
     Phone = fix_nil(P),
 
-    case PhoneContext of
-        undefined ->
-            ok; 
-        _ ->
-            ContextEvent = #{
-                user => UserName,
-                association => em_utils:md5_hex(UserName),
-                phonecontext => PhoneContext
-            }, 
-            em_manager_hss:set_phonecontext(ContextEvent)
-    end,
+    ContextEvent = #{
+        user => UserName,
+        association => em_utils:md5_hex(UserName),
+        phonecontext => PhoneContext
+        }, 
+    em_manager_hss:set_phonecontext(ContextEvent),
 
     case TrunkLinePort of
          undefined when Phone == undefined ->
