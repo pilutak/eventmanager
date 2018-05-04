@@ -46,8 +46,10 @@ handle('POST', [<<"users">>], Req) ->
     Group = elli_request:post_arg_decoded(<<"group">>, Req, <<"undefined">>),
     Id = elli_request:post_arg_decoded(<<"id">>, Req, <<"undefined">>),
     Phone = elli_request:post_arg_decoded(<<"phone">>, Req, <<"undefined">>),
+    PhoneContext = elli_request:post_arg_decoded(<<"phonecontext">>, Req, <<"tg.gl">>),
+    
         
-    create_user(Type, Group, Id, Phone),
+    create_user(Type, Group, Id, PhoneContext, Phone),
     
     %{ok, [], <<"Hello ", Name/binary, " of ", City/binary>>};
 
@@ -123,10 +125,12 @@ fixup_key(Term) ->
     end.
 
     
-create_user(<<"user">>, Group, Id, <<"undefined">>) ->
+create_user(<<"user">>, Group, Id, PhoneContext, <<"undefined">>) ->
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
+    PhoneContext1 = binary_to_list(PhoneContext),
     SIPPass = em_srd:get_pass(Id1),
+    
 
     Event = #{
         user        => Id1,
@@ -139,15 +143,17 @@ create_user(<<"user">>, Group, Id, <<"undefined">>) ->
         irs         => '1',
         association => em_utils:md5_hex(Id1),
         phone       => "NODATA",
-        pass        => SIPPass
+        pass        => SIPPass,
+        phonecontext=> PhoneContext1 
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
         
-create_user(<<"user">>, Group, Id, Phone) ->
+create_user(<<"user">>, Group, Id, PhoneContext, Phone) ->
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
     Phone1 = binary_to_list(Phone),
+    PhoneContext1 = binary_to_list(PhoneContext),
     SIPPass = em_srd:get_pass(Id1),
 
     Event = #{
@@ -161,12 +167,13 @@ create_user(<<"user">>, Group, Id, Phone) ->
         irs         => '1',
         association => em_utils:md5_hex(Id1),
         phone       => Phone1,
-        pass        => SIPPass
+        pass        => SIPPass,
+        phonecontext=> PhoneContext1
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
     
-create_user(<<"virtual">>, Group, Id, <<"undefined">>) ->
+create_user(<<"virtual">>, Group, Id, _PhoneContext, <<"undefined">>) ->
     io:format("CREATE USER WITHOUT PHONE IS CALLED!"),
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
@@ -186,7 +193,7 @@ create_user(<<"virtual">>, Group, Id, <<"undefined">>) ->
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
         
-create_user(<<"virtual">>, Group, Id, Phone) ->
+create_user(<<"virtual">>, Group, Id, _PhoneContext, Phone) ->
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
     Phone1 = binary_to_list(Phone),
