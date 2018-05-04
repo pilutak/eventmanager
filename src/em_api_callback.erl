@@ -125,11 +125,13 @@ fixup_key(Term) ->
     end.
 
     
-create_user(<<"user">>, Group, Id, PhoneContext, <<"undefined">>) ->
+create_user(<<"user">>, Group, Id, City, <<"undefined">>) ->
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
-    PhoneContext1 = binary_to_list(PhoneContext),
+    City1 = binary_to_list(City),
     SIPPass = em_srd:get_pass(Id1),
+    
+    PhoneContext = maps:get(City1, phonecontexts(), "tg.gl"),
     
 
     Event = #{
@@ -144,17 +146,19 @@ create_user(<<"user">>, Group, Id, PhoneContext, <<"undefined">>) ->
         association => em_utils:md5_hex(Id1),
         phone       => "NODATA",
         pass        => SIPPass,
-        phonecontext=> PhoneContext1 
+        phonecontext=> PhoneContext 
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
         
-create_user(<<"user">>, Group, Id, PhoneContext, Phone) ->
+create_user(<<"user">>, Group, Id, City, Phone) ->
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
     Phone1 = binary_to_list(Phone),
-    PhoneContext1 = binary_to_list(PhoneContext),
+    City1 = binary_to_list(City),
     SIPPass = em_srd:get_pass(Id1),
+
+    PhoneContext = maps:get(City1, phonecontexts(), "tg.gl"),
 
     Event = #{
         user        => Id1,
@@ -168,7 +172,7 @@ create_user(<<"user">>, Group, Id, PhoneContext, Phone) ->
         association => em_utils:md5_hex(Id1),
         phone       => Phone1,
         pass        => SIPPass,
-        phonecontext=> PhoneContext1
+        phonecontext=> PhoneContext
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
@@ -213,4 +217,26 @@ create_user(<<"virtual">>, Group, Id, _PhoneContext, Phone) ->
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event).
     
+phonecontexts() ->
+    #{
+        "Nuuk" => "nuk.tg.gl",
+        "Nanortalik" => "nan.tg.gl",
+        "Narsaq" => "nar.tg.gl",
+        "Qaqortoq" => "qaq.tg.gl",
+        "Qassiarsuk" => "qsk.tg.gl",
+        "Narsarsuaq" => "nrs.tg.gl",
+        "Igaliku" => "iga.tg.gl",
+        "Paamiut" => "paa.tg.gl",
+        "Maniitsoq" => "man.tg.gl",
+        "Kangerlussuaq" => "kan.tg.gl",
+        "Sisimiut" => "sis.tg.gl",
+        "Aasiaat" => "aas.tg.gl",
+        "Qeqertarsuaq" => "qeq.tg.gl",
+        "Ilulissat" => "ilu.tg.gl",
+        "Qasigiannguit" => "qas.tg.gl",
+        "Upernavik" => "upv.tg.gl",
+        "Uummannaq" =>"uum.tg.gl",
+        "Alaska" =>"ala.tg.gl"
+    }.        
+
     
