@@ -56,6 +56,23 @@ handle('POST', [<<"users">>], Req) ->
     {ok, [{<<"Content-type">>, <<"application/json; charset=ISO-8859-1">>}],
     Id};
 
+handle('POST', [<<"vmailusers">>], Req) ->
+	%Name = elli_request:body(Req),
+	%io:format(Name),
+    %% Fetch a POST argument from the POST body.
+    %Name = elli_request:post_arg(<<"name">>, Req, <<"undefined">>),
+    % Fetch and decode
+
+    Id = elli_request:post_arg_decoded(<<"id">>, Req, <<"undefined">>),
+    MailUser = elli_request:post_arg_decoded(<<"vmailuser">>, Req, <<"NODATA">>),
+    MailPass = elli_request:post_arg_decoded(<<"vmailpass">>, Req, <<"NODATA">>),
+    
+        
+    create_vmail_user(Id, MailUser, MailPass),
+    
+    {ok, [{<<"Content-type">>, <<"application/json; charset=ISO-8859-1">>}],
+    Id};
+
 
 handle('DELETE', [<<"groups">>, Id], _Req) ->
 	%Name = elli_request:body(Req),
@@ -216,6 +233,13 @@ create_user(<<"virtual">>, Group, Id, _PhoneContext, Phone) ->
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event).
+
+create_vmail_user(Id, MailUser, MailPass) ->
+    Id1 = binary_to_list(Id),
+    MailUser1 = binary_to_list(MailUser),
+    MailPass1 = binary_to_list(MailPass),
+    em_srd:set_vmail(Id1, MailUser1, MailPass1).
+
     
 phonecontexts() ->
     #{

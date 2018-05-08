@@ -45,7 +45,7 @@ EOH
 
 
 my $ua = LWP::UserAgent->new;
-my $url = "http://localhost:8080/users";
+#my $url = "http://localhost:8080/users";
 
 
 
@@ -126,7 +126,7 @@ while (<$socket>) {
     if ( $_ =~ m/<\/BroadsoftDocument>/ ) { last; }
 
 }
-print "$tdata\n";
+#print "$tdata\n";
 my $userGetListInGroupResponse = XMLin( $tdata, ForceArray => 1 );
 
 #print Dumper($userGetListInGroupResponse);
@@ -172,9 +172,12 @@ while ( my ( $k, $v ) = each %$users_ref ) {
     $users_ref->{$k}->{city} = $userGetResponse19->{command}->[0]->{address}->[0]->{stateOrProvince}->[0];
     $users_ref->{$k}->{ispilot} = $userGetResponse19->{command}->[0]->{trunkAddressing}->[0]->{trunkGroupDeviceEndpoint}->[0]->{isPilotUser}->[0];
 
+    if ($v->{'phone'} =~ m/(\+299-)(\d+)/ ) {        
+        $users_ref->{$k}->{phone} = $2;
+    }
 
     if ($v->{'city'} eq "") {
-        $users_ref->{$k}->{city} = "Nuuk";
+        $users_ref->{$k}->{city} = "undefined"; #<--- EM2 will default to tg.gl
     }    
 
     if ($v->{'ispilot'} eq "") {
@@ -182,43 +185,126 @@ while ( my ( $k, $v ) = each %$users_ref ) {
     }    
 
 
-    if ($v->{'istrunk'} eq "false") {
-        if ($v->{'phone'} =~ m/HASH/) {
-                    
-            #print "User: $v->{'userId'} City: $v->{'city'} Phone: NODATA\n";
-            #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'} } );
-            print "{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'} }\n";
-            next;        
-        };
-        
-        #print "User: $v->{'userId'} City: $v->{'city'} Phone: $v->{'phone'}\n";
-        
-        if ( $v->{'phone'} =~ m/(\+299-)(\d+)/ ) {        
-            my $phone = $2;
-            #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'user', $v->{'city'} } );
-            print "{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'}, 'phone' => $phone, }\n";
-        
-         }
-        
-        
-    # This is an trunk user    
-    } else {
-        
-        
-        if ($v->{'ispilot'} eq "true") {
-        
-            print "{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'pilot', 'city' =>  $v->{'city'} }\n";
 
-        } else {
+    $xml = '<?xml version="1.0" encoding="ISO-8859-1"?>';
+    $xml .= '<BroadsoftDocument protocol = "OCI" xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+    $xml .= "<sessionId xmlns=\"\">$sessionId</sessionId>";
+    $xml .= '<command xsi:type="UserVoiceMessagingUserGetAdvancedVoiceManagementRequest14sp3" xmlns="">';
+    $xml .= "<userId>$k</userId>";
+    $xml .= '</command></BroadsoftDocument>';
+    
+    $socket->send($xml);
+
+    # THIS DATA MIGHT BE REALLY BIG!!
+    my $atdata;
+    while (<$socket>) {
+            $atdata .= $_;
+            if ( $_ =~ m/<\/BroadsoftDocument>/ ) { last; }
+
+    }
+
+    #print "Received from Server : $atdata\n";
+
+    my $userVoiceMessagingUserGetAdvancedVoiceManagementResponse14sp3 = XMLin( $atdata, ForceArray => 1 );
+    $users_ref->{$k}->{vmailuser} = $userVoiceMessagingUserGetAdvancedVoiceManagementResponse14sp3->{command}->[0]->{groupMailServerUserId}->[0];
+
+
+    if ($v->{'vmailuser'} eq "") {
+        $users_ref->{$k}->{vmailuser} = "undefined";
+    }    
+
+
+
+
+    $xml = '<?xml version="1.0" encoding="ISO-8859-1"?>';
+    $xml .= '<BroadsoftDocument protocol = "OCI" xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+    $xml .= "<sessionId xmlns=\"\">$sessionId</sessionId>";
+    $xml .= '<command xsi:type="UserVoiceMessagingUserGetPasswordsRequest" xmlns="">';
+    $xml .= "<userId>$k</userId>";
+    $xml .= '</command></BroadsoftDocument>';
+    
+    $socket->send($xml);
+
+    # THIS DATA MIGHT BE REALLY BIG!!
+    my $atdata;
+    while (<$socket>) {
+            $atdata .= $_;
+            if ( $_ =~ m/<\/BroadsoftDocument>/ ) { last; }
+
+    }
+
+    #print "Received from Server : $atdata\n";
+
+    my $userVoiceMessagingUserGetPasswordsResponse = XMLin( $atdata, ForceArray => 1 );
+    $users_ref->{$k}->{vmailpass} = $userVoiceMessagingUserGetPasswordsResponse->{command}->[0]->{groupMailServerPassword}->[0];
+
+    if ($v->{'vmailpass'} eq "") {
+        $users_ref->{$k}->{vmailuser} = "undefined";
+    }    
+
+
+
+    # Not a trunk user, and no phone 
+    if ($v->{'istrunk'} eq "false") {
+        if ($v->{'phone'} =~ m/HASH/) {                            
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'} }");
             
-            print "{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'trunk', 'city' =>  $v->{'city'} }\n";
-                
+
+            if ($v->{'vmailuser'} ne "undefined") {
+                &send_vmail_request("{ 'id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} }");
+            }              
+            next;            
+        } else { #<----------- Phone is defined
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'user', $v->{'city'} }");
+            
+            if ($v->{'vmailuser'} ne "undefined") {
+                &send_vmail_request("{ 'id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} }");
+            }  
             
         }
-    };
-    
+                        
+        
+    } else { #<------------ This is an trunk user    
+        if ($v->{'ispilot'} eq "true") {
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'pilot'}");
+
+        } else {
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'trunk' }");                
+        }
+    }
 
 }
+
+
+
+
+# WE ARE GETTING VOICEPORTAL FROM THE GROUP
+$xml = '<?xml version="1.0" encoding="ISO-8859-1"?>';
+$xml .= '<BroadsoftDocument protocol = "OCI" xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+$xml .= "<sessionId xmlns=\"\">$sessionId</sessionId>";
+$xml .= '<command xsi:type="GroupVoiceMessagingGroupGetVoicePortalRequest19sp1" xmlns="">';
+$xml .= "<serviceProviderId>$sp</serviceProviderId>";
+$xml .= "<groupId>$grp</groupId>";
+$xml .= '</command></BroadsoftDocument>';
+
+$socket->send($xml);
+
+# THIS DATA MIGHT BE REALLY BIG!!
+my $tdata1;
+while (<$socket>) {
+
+    $tdata1 .= $_;
+    if ( $_ =~ m/<\/BroadsoftDocument>/ ) { last; }
+
+}
+#print "$tdata1\n";
+my $groupVoiceMessagingGroupGetVoicePortalResponse19sp1 = XMLin( $tdata1, ForceArray => 1 );
+my $vp = $groupVoiceMessagingGroupGetVoicePortalResponse19sp1->{command}->[0]->{serviceUserId}->[0];
+
+if ($vp ne "") {
+    
+     &send_request("{ 'id' => $vp, 'group' => $grp, 'type' => 'virtual' }");  
+}    
 
 
 
@@ -425,4 +511,26 @@ sub get_session_id {
 }
 
 
+sub send_request {
+    my $request = shift;
+    if ($mode eq "commit") {
+        print "PROCESSING: $request\n";
+        my $response = $ua->post( "http://localhost:8080/users", $request );
+        die "Can't get http://localhost:8080/users -- ", $response->status_line
+          unless $response->is_success;
+    } else { print "SIMULATING: $request\n"; }
+    
+}
+
+
+sub send_vmail_request {
+    my $request = shift;
+    if ($mode eq "commit") {
+        print "PROCESSING: $request\n";
+        my $response = $ua->post( "http://localhost:8080/vmailusers", $request );
+        die "Can't get http://localhost:8080/vmailusers -- ", $response->status_line
+          unless $response->is_success;
+    } else { print "SIMULATING: $request\n"; }
+    
+}
 
