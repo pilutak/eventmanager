@@ -300,10 +300,20 @@ while (<$socket>) {
 #print "$tdata1\n";
 my $groupVoiceMessagingGroupGetVoicePortalResponse19sp1 = XMLin( $tdata1, ForceArray => 1 );
 my $vp = $groupVoiceMessagingGroupGetVoicePortalResponse19sp1->{command}->[0]->{serviceUserId}->[0];
+my $vp_phone = $groupVoiceMessagingGroupGetVoicePortalResponse19sp1->{command}->[0]->{serviceInstanceProfile}->[0]->{phoneNumber}->[0];
+
 
 if ($vp ne "") {
     
-     &send_request("{ 'id' => $vp, 'group' => $grp, 'type' => 'virtual' }");  
+    
+    if ($vp_phone eq "") {
+    
+     &send_request("{ 'id' => $vp, 'group' => $grp, 'type' => 'virtual' }");
+     } else {
+         
+         &send_request("{ 'id' => $vp, 'group' => $grp, 'type' => 'virtual', 'phone' => $vp_phone }");
+     }
+                 
 }    
 
 
@@ -349,15 +359,20 @@ foreach my $hg (@{ $GroupHuntGroupGetInstanceListResponse->{command}->[0]->{hunt
         
         if ($v->{'phone'} =~ m/HASH/) {
         
-            print "$v->{'userId'} NODATA\n";
+            #print "$v->{'userId'} NODATA\n";
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
             next;
     
         
         };
 
-        #print $fh1 "$v->{'userId'} $v->{'phone'}\n";
-        print "$v->{'userId'} $v->{'phone'}\n";
+        if ( $v->{'phone'} =~ m/(\+299-)(\d+)/ ) { 
         
+            my $phone = $2;
+            #print $fh1 "$v->{'userId'} $v->{'phone'}\n";
+            #print "$v->{'userId'} $v->{'phone'}\n";
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        }
     }
 #close $fh1;
 
@@ -407,20 +422,20 @@ while ( my ( $k, $v ) = each %$aas_ref ) {
         
         #print "$v->{'userId'} NODATA\n";
         #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' } );
+        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
         next;
     
         
     };
 
     #print $fh2 "$v->{'userId'} $v->{'phone'}\n";
-    print "$v->{'userId'} $v->{'phone'}\n";
+    #print "$v->{'userId'} $v->{'phone'}\n";
     
-    if ( $v->{'phone'} =~ m/(\+299-)(\d+)/ ) { 
+    if ( $v->{'phone'} ne "" ) { 
         
-        my $phone = $2;
         #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'virtual' } );
-    
-    
+        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        
      }
     
 }
@@ -469,14 +484,22 @@ while ( my ( $k, $v ) = each %$ccs_ref ) {
     
     if ($v->{'phone'} =~ m/HASH/) {
         
-        print "$v->{'userId'} NODATA\n";
+        #print "$v->{'userId'} NODATA\n";
+        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
         next;
     
         
     };
 
     #print $fh3 "$v->{'userId'} $v->{'phone'}\n";
-    print "$v->{'userId'} $v->{'phone'}\n";
+    #print "$v->{'userId'} $v->{'phone'}\n";
+    if ( $v->{'phone'} ne "" ) { 
+        
+        #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'virtual' } );
+        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        
+     }
+    
 
 }
 #close $fh2;
