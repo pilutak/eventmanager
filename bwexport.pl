@@ -255,7 +255,7 @@ while ( my ( $k, $v ) = each %$users_ref ) {
             }              
             next;            
         } else { #<----------- Phone is defined
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'user', $v->{'city'} }");
+            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'user', 'city' => $v->{'city'} }");
             
             if ($v->{'vmailuser'} ne "undefined") {
                 &send_vmail_request("{ 'id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} }");
@@ -503,6 +503,93 @@ while ( my ( $k, $v ) = each %$ccs_ref ) {
 
 }
 #close $fh2;
+
+
+
+# WE ARE GETTING MEET-ME bridges FROM THE GROUP
+$xml = '<?xml version="1.0" encoding="ISO-8859-1"?>';
+$xml .= '<BroadsoftDocument protocol = "OCI" xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+$xml .= "<sessionId xmlns=\"\">$sessionId</sessionId>";
+$xml .= '<command xsi:type="GroupMeetMeConferencingGetInstanceListRequest" xmlns="">';
+$xml .= "<serviceProviderId>$sp</serviceProviderId>";
+$xml .= "<groupId>$grp</groupId>";
+$xml .= '</command></BroadsoftDocument>';
+
+$socket->send($xml);
+
+# THIS DATA MIGHT BE REALLY BIG!!
+my $tdata2;
+while (<$socket>) {
+
+    $tdata2 .= $_;
+    if ( $_ =~ m/<\/BroadsoftDocument>/ ) { last; }
+
+}
+#print "$tdata1\n";
+my $GroupMeetMeConferencingGetInstanceListResponse = XMLin( $tdata2, ForceArray => 1 );
+
+#print Dumper($GroupHuntGroupGetInstanceListResponse);
+
+my $meets_ref;
+foreach my $meet (@{ $GroupMeetMeConferencingGetInstanceListResponse->{command}->[0]->{conferenceBridgeTable}->[0]->{row} }){
+
+    $meets_ref->{ $meet->{col}->[0] } = {
+
+        userId     => $meet->{col}->[0],
+        phone      => $meet->{col}->[2]
+    };
+
+
+}
+
+
+  # WE ARE REMOVING PHONE FROM AA, GROUP AND SERVICEPROVIDER
+while ( my ( $k, $v ) = each %$meets_ref ) {
+    
+    if ($v->{'phone'} =~ m/HASH/) {
+        
+        #print "$v->{'userId'} NODATA\n";
+        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
+        next;
+    
+        
+    };
+
+    #print $fh3 "$v->{'userId'} $v->{'phone'}\n";
+    #print "$v->{'userId'} $v->{'phone'}\n";
+    if ( $v->{'phone'} ne "" ) { 
+        
+        #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'virtual' } );
+        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        
+     }
+    
+
+}
+#close $fh2;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 $xml = '<?xml version="1.0" encoding="ISO-8859-1"?>';
 $xml .= '<BroadsoftDocument xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" protocol="OCI">';
