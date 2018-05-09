@@ -566,30 +566,6 @@ while ( my ( $k, $v ) = each %$meets_ref ) {
     
 
 }
-#close $fh2;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 $xml = '<?xml version="1.0" encoding="ISO-8859-1"?>';
 $xml .= '<BroadsoftDocument xmlns="C" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" protocol="OCI">';
