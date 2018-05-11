@@ -310,7 +310,8 @@ processor(Id, create_trunk, Message) ->
         irs         => '1',
         association => em_utils:md5_hex(UserName),
         phone       => "NODATA",
-        pass        => SipPass
+        pass        => SipPass,
+        phonecontext=> "tg.gl"
     },    
     %em_processor_trunk:create_user(Event);
     em_manager_hss:create_user(Event),
