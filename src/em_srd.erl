@@ -49,9 +49,10 @@ create_user(IMSAssociation) ->
     GroupId = maps:get(group, IMSAssociation),
     Type = maps:get(type, IMSAssociation),
     AssociationId = maps:get(association, IMSAssociation),
+    PhoneContext = maps:get(phonecontext, IMSAssociation),
     
     C = connect(),
-    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext, association_id, created) values ($1,$2,$3,$4,'tg.gl',$5, timezone('utc', now()))", [Id,GroupId,PubId,Type,AssociationId]),
+    {ok, _} = epgsql:equery(C, "insert into srd_user (id, group_id, sipurl, user_type, phonecontext, association_id, created) values ($1,$2,$3,$4,$5,$6, timezone('utc', now()))", [Id,GroupId,PubId,Type,PhoneContext,AssociationId]),
     epgsql:close(C).
     
 delete_user(IMSAssociation) ->

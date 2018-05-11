@@ -42,7 +42,9 @@ processor(Id, create_service, Message) ->
         isdefault   => 'false',
         irs         => '0',
         association => em_utils:md5_hex(User),
-        phone       => "NODATA"
+        phone       => "NODATA",
+        phonecontext=> "tg.gl"
+        
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event),
@@ -95,7 +97,8 @@ processor(Id, modify_group_vp, Message) ->
         isdefault   => 'false',
         irs         => '0',
         group       => fix_nil(GroupId),
-        association => em_utils:md5_hex(User) 
+        association => em_utils:md5_hex(User),
+        phonecontext=> "tg.gl" 
     },
     
     case em_srd:user_exists(User) of

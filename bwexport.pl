@@ -12,6 +12,7 @@ use LWP::UserAgent;
 
 my $help;
 my $host;
+my $emhost;
 my $user;
 my $password;
 my $sp;
@@ -22,6 +23,7 @@ my $sessionId = get_session_id();
 GetOptions(
     'help'     => \$help,
     'host=s'   => \$host,
+    'em=s'     => \$emhost,
     'user=s'   => \$user,
     'pass=s'   => \$password,
     'sp=s'     => \$sp,
@@ -247,18 +249,18 @@ while ( my ( $k, $v ) = each %$users_ref ) {
     # Not a trunk user, and no phone 
     if ($v->{'istrunk'} eq "false") {
         if ($v->{'phone'} =~ m/HASH/) {                            
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'} }");
+            &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'} ]);
             
-
+        
             if ($v->{'vmailuser'} ne "undefined") {
-                &send_vmail_request("{ 'id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} }");
+                &send_vmail_request(['id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} ]);
             }              
             next;            
         } else { #<----------- Phone is defined
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'user', 'city' => $v->{'city'} }");
+            &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'user', 'city' => $v->{'city'} ]);
             
             if ($v->{'vmailuser'} ne "undefined") {
-                &send_vmail_request("{ 'id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} }");
+                &send_vmail_request(['id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} ]);
             }  
             
         }
@@ -266,10 +268,10 @@ while ( my ( $k, $v ) = each %$users_ref ) {
         
     } else { #<------------ This is an trunk user    
         if ($v->{'ispilot'} eq "true") {
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'pilot'}");
+            &send_request(['id' => $v->{'userId'}, 'group' => $grp, 'type' => 'pilot']);
 
         } else {
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'trunk' }");                
+            #&send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'trunk']);                
         }
     }
 
@@ -308,10 +310,10 @@ if ($vp ne "") {
     
     if ($vp_phone eq "") {
     
-     &send_request("{ 'id' => $vp, 'group' => $grp, 'type' => 'virtual' }");
+     &send_request([ 'id' => $vp, 'group' => $grp, 'type' => 'virtual' ]);
      } else {
          
-         &send_request("{ 'id' => $vp, 'group' => $grp, 'type' => 'virtual', 'phone' => $vp_phone }");
+         &send_request([ 'id' => $vp, 'group' => $grp, 'type' => 'virtual', 'phone' => $vp_phone ]);
      }
                  
 }    
@@ -360,7 +362,7 @@ foreach my $hg (@{ $GroupHuntGroupGetInstanceListResponse->{command}->[0]->{hunt
         if ($v->{'phone'} =~ m/HASH/) {
         
             #print "$v->{'userId'} NODATA\n";
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
+            &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' ]);  
             next;
     
         
@@ -371,7 +373,7 @@ foreach my $hg (@{ $GroupHuntGroupGetInstanceListResponse->{command}->[0]->{hunt
             my $phone = $2;
             #print $fh1 "$v->{'userId'} $v->{'phone'}\n";
             #print "$v->{'userId'} $v->{'phone'}\n";
-            &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+            &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} ]);
         }
     }
 #close $fh1;
@@ -422,7 +424,7 @@ while ( my ( $k, $v ) = each %$aas_ref ) {
         
         #print "$v->{'userId'} NODATA\n";
         #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' } );
-        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
+        &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' ]);  
         next;
     
         
@@ -434,7 +436,7 @@ while ( my ( $k, $v ) = each %$aas_ref ) {
     if ( $v->{'phone'} ne "" ) { 
         
         #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'virtual' } );
-        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} ]);
         
      }
     
@@ -485,7 +487,7 @@ while ( my ( $k, $v ) = each %$ccs_ref ) {
     if ($v->{'phone'} =~ m/HASH/) {
         
         #print "$v->{'userId'} NODATA\n";
-        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
+        &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' ]);  
         next;
     
         
@@ -496,7 +498,7 @@ while ( my ( $k, $v ) = each %$ccs_ref ) {
     if ( $v->{'phone'} ne "" ) { 
         
         #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'virtual' } );
-        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} ]);
         
      }
     
@@ -549,7 +551,7 @@ while ( my ( $k, $v ) = each %$meets_ref ) {
     if ($v->{'phone'} =~ m/HASH/) {
         
         #print "$v->{'userId'} NODATA\n";
-        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' }");  
+        &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual' ]);  
         next;
     
         
@@ -560,7 +562,7 @@ while ( my ( $k, $v ) = each %$meets_ref ) {
     if ( $v->{'phone'} ne "" ) { 
         
         #my $response = $ua->post( $url, { 'id' => $v->{'userId'}, 'group' => $grp, 'phone' => $phone, 'type' => 'virtual' } );
-        &send_request("{ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} }");
+        &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'virtual', 'phone' =>  $v->{'phone'} ]);
         
      }
     
@@ -598,25 +600,28 @@ sub get_session_id {
 
 
 sub send_request {
-    my $request = shift;
+    my $request_ref = shift;
+    my @request = @$request_ref;
     if ($mode eq "commit") {
-        print "PROCESSING: $request\n";
-        my $response = $ua->post( "http://localhost:8080/users", $request );
-        die "Can't get http://localhost:8080/users -- ", $response->status_line
+        print "PROCESSING: @request\n";
+        my $response = $ua->post( "http://$emhost:8080/users", $request_ref );
+        print "Can't get http://$emhost:8080/users -- ", $response->status_line
           unless $response->is_success;
-    } else { print "SIMULATING: $request\n"; }
+    } else { print "SIMULATING: @request\n"; }
     
 }
 
 
 sub send_vmail_request {
-    my $request = shift;
+    my $request_ref = shift;
+    my @request = @$request_ref;
+
     if ($mode eq "commit") {
-        print "PROCESSING: $request\n";
-        my $response = $ua->post( "http://localhost:8080/vmailusers", $request );
-        die "Can't get http://localhost:8080/vmailusers -- ", $response->status_line
+        print "PROCESSING: @request\n";
+        my $response = $ua->post( "http://$emhost:8080/vmailusers", $request_ref );
+        die "Can't get http://$emhost:8080/vmailusers -- ", $response->status_line
           unless $response->is_success;
-    } else { print "SIMULATING: $request\n"; }
+    } else { print "SIMULATING: @request\n"; }
     
 }
 

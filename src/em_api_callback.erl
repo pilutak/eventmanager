@@ -41,15 +41,14 @@ handle('POST', [<<"users">>], Req) ->
     %% Fetch a POST argument from the POST body.
     %Name = elli_request:post_arg(<<"name">>, Req, <<"undefined">>),
     % Fetch and decode
-
+    io:format("USERS CALLED"),
     Type = elli_request:post_arg_decoded(<<"type">>, Req, <<"undefined">>),
     Group = elli_request:post_arg_decoded(<<"group">>, Req, <<"undefined">>),
     Id = elli_request:post_arg_decoded(<<"id">>, Req, <<"undefined">>),
     Phone = elli_request:post_arg_decoded(<<"phone">>, Req, <<"undefined">>),
-    PhoneContext = elli_request:post_arg_decoded(<<"phonecontext">>, Req, <<"tg.gl">>),
-    
+    City = elli_request:post_arg_decoded(<<"city">>, Req, <<"undefined">>),
         
-    create_user(Type, Group, Id, PhoneContext, Phone),
+    create_user(Type, Group, Id, City, Phone),
     
     %{ok, [], <<"Hello ", Name/binary, " of ", City/binary>>};
 
@@ -174,9 +173,9 @@ create_user(<<"user">>, Group, Id, City, Phone) ->
     Phone1 = binary_to_list(Phone),
     City1 = binary_to_list(City),
     SIPPass = em_srd:get_pass(Id1),
-
     PhoneContext = maps:get(City1, phonecontexts(), "tg.gl"),
 
+    io:format(PhoneContext),
     Event = #{
         user        => Id1,
         pubid       => Id1,
@@ -194,10 +193,12 @@ create_user(<<"user">>, Group, Id, City, Phone) ->
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
     
-create_user(<<"virtual">>, Group, Id, _PhoneContext, <<"undefined">>) ->
+create_user(<<"virtual">>, Group, Id, City, <<"undefined">>) ->
     io:format("CREATE USER WITHOUT PHONE IS CALLED!"),
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
+    City1 = binary_to_list(City),
+    PhoneContext = maps:get(City1, phonecontexts(), "tg.gl"),
 
     Event = #{
         user        => Id1,
@@ -209,15 +210,19 @@ create_user(<<"virtual">>, Group, Id, _PhoneContext, <<"undefined">>) ->
         isdefault   => 'false',
         irs         => '0',
         association => em_utils:md5_hex(Id1),
-        phone       => "NODATA"
+        phone       => "NODATA",
+        phonecontext=> PhoneContext
+        
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event);
         
-create_user(<<"virtual">>, Group, Id, _PhoneContext, Phone) ->
+create_user(<<"virtual">>, Group, Id, City, Phone) ->
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
     Phone1 = binary_to_list(Phone),
+    City1 = binary_to_list(City),
+    PhoneContext = maps:get(City1, phonecontexts(), "tg.gl"),
 
     Event = #{
         user        => Id1,
@@ -229,11 +234,38 @@ create_user(<<"virtual">>, Group, Id, _PhoneContext, Phone) ->
         isdefault   => 'false',
         irs         => '0',
         association => em_utils:md5_hex(Id1),
-        phone       => Phone1
+        phone       => Phone1,
+        phonecontext=> PhoneContext
+        
+    },
+    %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event);
+
+
+create_user(<<"pilot">>, Group, Id, _PhoneContext, <<"undefined">>) ->
+    io:format("CREATE PILOT WITHOUT PHONE IS CALLED!"),
+    Id1 = binary_to_list(Id),
+    Group1 = binary_to_list(Group),
+    SIPPass = em_srd:get_pass(Id1),
+
+    Event = #{
+        user        => Id1,
+        pubid       => Id1,
+        group       => Group1,
+        type        => 'pilot',
+        csprofile   => 'BusinessTrunk',
+        ispsi       => 'false',
+        isdefault   => 'false',
+        irs         => '1',
+        association => em_utils:md5_hex(Id1),
+        phone       => "NODATA",
+        pass        => SIPPass,
+        phonecontext=> "tg.gl"
+        
     },
     %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event).
-
+        
 create_vmail_user(Id, MailUser, MailPass) ->
     Id1 = binary_to_list(Id),
     MailUser1 = binary_to_list(MailUser),
@@ -262,5 +294,4 @@ phonecontexts() ->
         "Uummannaq" =>"uum.tg.gl",
         "Alaska" =>"ala.tg.gl"
     }.        
-
     
