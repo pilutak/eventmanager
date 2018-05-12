@@ -271,7 +271,7 @@ while ( my ( $k, $v ) = each %$users_ref ) {
             &send_request(['id' => $v->{'userId'}, 'group' => $grp, 'type' => 'pilot']);
 
         } else {
-            #&send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'trunk']);                
+            &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'trunk']);                
         }
     }
 

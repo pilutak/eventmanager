@@ -242,7 +242,7 @@ create_user(<<"virtual">>, Group, Id, City, Phone) ->
     em_manager_hss:create_user(Event);
 
 
-create_user(<<"pilot">>, Group, Id, _PhoneContext, <<"undefined">>) ->
+create_user(<<"pilot">>, Group, Id, _City, <<"undefined">>) ->
     io:format("CREATE PILOT WITHOUT PHONE IS CALLED!"),
     Id1 = binary_to_list(Id),
     Group1 = binary_to_list(Group),
@@ -253,7 +253,7 @@ create_user(<<"pilot">>, Group, Id, _PhoneContext, <<"undefined">>) ->
         pubid       => Id1,
         group       => Group1,
         type        => 'pilot',
-        csprofile   => 'BusinessTrunk',
+        csprofile   => 'BusinessTrunk_csas02',
         ispsi       => 'false',
         isdefault   => 'false',
         irs         => '1',
@@ -264,7 +264,33 @@ create_user(<<"pilot">>, Group, Id, _PhoneContext, <<"undefined">>) ->
         
     },
     %ok = em_processor_service:create_user(Event);
+    em_manager_hss:create_user(Event);
+
+
+create_user(<<"trunk">>, Group, Id, _City, Phone) ->
+    Id1 = binary_to_list(Id),
+    Group1 = binary_to_list(Group),
+    Phone1 = binary_to_list(Phone),
+
+    Event = #{
+        user        => Id1,
+        pubid       => Id1,
+        group       => Group1,
+        type        => 'trunk',
+        csprofile   => 'BusinessTrunk_wild_csas02',
+        ispsi       => 'true',
+        isdefault   => 'false',
+        irs         => '0',
+        association => em_utils:md5_hex(Id1),
+        phone       => Phone1,
+        phonecontext=> "tg.gl",
+        sprofile    => Id1
+        
+        
+    },
+    %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event).
+
         
 create_vmail_user(Id, MailUser, MailPass) ->
     Id1 = binary_to_list(Id),
