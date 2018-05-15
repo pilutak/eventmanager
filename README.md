@@ -1,4 +1,5 @@
 # eventmanager
+[![Build Status](https://travis-ci.org/timezone4/eventmanager.svg)](https://travis-ci.org/timezone4/eventmanager)
 
 ### How to run:
 
