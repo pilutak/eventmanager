@@ -69,7 +69,7 @@ Configuration is done in the sys.config file
             {primary, [
                 {hostname, "127.0.0.1"},
                 {port, "7026"},
-                {username, "alce"},
+                {username, "alice"},
                 {password, "alice"}
             ]},
             {secondary, [
