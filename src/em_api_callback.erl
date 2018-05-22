@@ -33,8 +33,20 @@ handle('GET', [<<"event">>, Id], _Req) ->
 	{ok, [{<<"Content-type">>, <<"application/json">>}],
 	ResponseBody};
 
+% used for migration
+handle('GET', [<<"user">>, Id], _Req) ->
+    Id1 = binary_to_list(Id),
+    ResponseBody = em_srd:get_pass(Id1),
+	%[Response] = em_srd:get_pass(Id1),
+	%ResponseBody = term_to_json(Response),
+    
+    case em_srd:get_pass(Id1) of
+        undefined -> {404, [], <<"Not Found">>};
+        _-> {ok, [{<<"Content-type">>, <<"application/json">>}], ResponseBody}
+        
+    end;
 
-
+% used for migration
 handle('POST', [<<"users">>], Req) ->
 	%Name = elli_request:body(Req),
 	%io:format(Name),
@@ -54,7 +66,7 @@ handle('POST', [<<"users">>], Req) ->
 
     {ok, [{<<"Content-type">>, <<"application/json; charset=ISO-8859-1">>}],
     Id};
-
+% used for migration
 handle('POST', [<<"vmailusers">>], Req) ->
 	%Name = elli_request:body(Req),
 	%io:format(Name),
@@ -72,7 +84,7 @@ handle('POST', [<<"vmailusers">>], Req) ->
     {ok, [{<<"Content-type">>, <<"application/json; charset=ISO-8859-1">>}],
     Id};
 
-
+% used for migration
 handle('DELETE', [<<"groups">>, Id], _Req) ->
 	%Name = elli_request:body(Req),
 	%io:format(Name),
