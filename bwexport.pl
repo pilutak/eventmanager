@@ -250,8 +250,7 @@ while ( my ( $k, $v ) = each %$users_ref ) {
     if ($v->{'istrunk'} eq "false") {
         if ($v->{'phone'} =~ m/HASH/) {                            
             &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'type' => 'user', 'city' =>  $v->{'city'} ]);
-            
-        
+                    
             if ($v->{'vmailuser'} ne "undefined") {
                 &send_vmail_request(['id' => $v->{'userId'}, 'vmailuser' =>  $v->{'vmailuser'}, 'vmailpass' =>  $v->{'vmailpass'} ]);
             }              
@@ -265,10 +264,19 @@ while ( my ( $k, $v ) = each %$users_ref ) {
             
         }
                         
+    
+        if ($mode ne "commit") {
+            &has_password($v->{'userId'});
+        }
+    
         
     } else { #<------------ This is an trunk user    
         if ($v->{'ispilot'} eq "true") {
             &send_request(['id' => $v->{'userId'}, 'group' => $grp, 'type' => 'pilot']);
+            if ($mode ne "commit") {
+                &has_password($v->{'userId'});
+            }
+            
 
         } else {
             &send_request([ 'id' => $v->{'userId'}, 'group' => $grp, 'phone' =>  $v->{'phone'}, 'type' => 'trunk']);                
@@ -607,7 +615,7 @@ sub send_request {
         my $response = $ua->post( "http://$emhost:8080/users", $request_ref );
         print "Can't get http://$emhost:8080/users -- ", $response->status_line
           unless $response->is_success;
-    } else { print "SIMULATING: @request\n"; }
+    } else { print "SIMULATING: @request\n";}
     
 }
 
@@ -625,3 +633,12 @@ sub send_vmail_request {
     
 }
 
+
+sub has_password {
+    my $user = shift;
+    my $response = $ua->get( "http://$emhost:8080/user/$user");
+    die "no password exist for $user -- ", $response->status_line
+      unless $response->is_success;
+    
+    
+}
