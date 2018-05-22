@@ -30,9 +30,9 @@
 %%% API
 %%%===================================================================
 
-insert_event(UserId, Command, Event) ->    
+insert_event(UserId, Command, Event) ->
     C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, timezone('utc', now())) returning id", [UserId, Command, Event, "pending"]),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, timezone('utc', now())) returning id", [utf(UserId), utf(Command), utf(Event), utf("pending")]),
     epgsql:close(C),
     case Rows of
         [] -> undefined;
@@ -41,9 +41,9 @@ insert_event(UserId, Command, Event) ->
              %binary_to_list(R)
     end.
 
-insert_white_event(UserId, Command, Event) ->    
+insert_white_event(UserId, Command, Event) ->
     C = connect(),
-    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, timezone('utc', now())) returning id", [UserId, Command, Event, "ignored"]),
+    {ok, _, _, Rows} = epgsql:equery(C, "insert into em_event (user_id, command, event, status, inserted) values ($1,$2,$3,$4, timezone('utc', now())) returning id", [utf(UserId), utf(Command), utf(Event), utf("ignored")]),
     epgsql:close(C),
     case Rows of
         [] -> undefined;
@@ -123,3 +123,7 @@ events_to_json({Id, User, Command, Status, Inserted}) ->
 event_to_json({Event}) ->
     %?INFO_MSG("Event to JSON: ~p~n", [Command]), 
 	#{event=>Event}.
+    
+utf(Data) ->
+    unicode:characters_to_binary(Data, latin1, utf8).
+
