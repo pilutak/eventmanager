@@ -347,7 +347,8 @@ update_impu_sip(#{ user := User, association := AId } = Event) ->
 delete_ims_association(Event) ->
     CPhone = em_srd:get_e164(Event),    
     case CPhone of
-        "NODATA" -> ok;        
+        "NODATA" -> ok;
+        undefined -> ok;        
         _ ->
             CAI3G = em_cai3g_envelope:delete_ims_enum(CPhone),
             ok = em_ema:request(CAI3G)
