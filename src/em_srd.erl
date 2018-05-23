@@ -65,12 +65,12 @@ set_e164(IMSAssociation) ->
     Id = maps:get(user, IMSAssociation),
     Phone = maps:get(phone, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1, updated=current_timestamp where id=$2", [Phone,Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164=$1, updated=timezone('utc', now()) where id=$2", [Phone,Id]),
     epgsql:close(C).
         
 delete_e164(Id)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA', updated=current_timestamp where id=$1", [Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set e164='NODATA', updated=timezone('utc', now()) where id=$1", [Id]),
     epgsql:close(C).
     
 get_e164(IMSAssociation) ->
@@ -99,13 +99,13 @@ set_sipuri(IMSAssociation)->
     Id = maps:get(user, IMSAssociation),
     PubId = maps:get(pubid, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1, updated=current_timestamp where id=$2", [PubId,Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1, updated=timezone('utc', now()) where id=$2", [PubId,Id]),
     epgsql:close(C). 
        
 set_sipuri_default(IMSAssociation)->
     Id = maps:get(user, IMSAssociation),
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1, updated=current_timestamp where id=$1", [Id]),
+    {ok, _} = epgsql:equery(C, "update srd_user set sipurl=$1, updated=timezone('utc', now()) where id=$1", [Id]),
     epgsql:close(C).
     
 get_group(Id) ->
@@ -132,7 +132,7 @@ get_pass(UserId) ->
 
 set_pass(UserId, Pass)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set password=$1, updated=current_timestamp where id=$2", [Pass,UserId]),
+    {ok, _} = epgsql:equery(C, "update srd_user set password=$1, updated=timezone('utc', now()) where id=$2", [Pass,UserId]),
     ok = epgsql:close(C),
     {ok, success}.
     
@@ -166,12 +166,12 @@ get_users(GrpId) ->
     
 set_vmail(UserName, MailUser, MailPass) ->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user=$1, vmail_password=$2, updated=current_timestamp where id=$3", [MailUser,MailPass,UserName]),
+    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user=$1, vmail_password=$2, updated=timezone('utc', now()) where id=$3", [MailUser,MailPass,UserName]),
     epgsql:close(C).
         
 delete_vmail(UserId)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user='NODATA', vmail_password='NODATA', updated=current_timestamp where id=$1", [UserId]),
+    {ok, _} = epgsql:equery(C, "update srd_user set vmail_user='NODATA', vmail_password='NODATA', updated=timezone('utc', now()) where id=$1", [UserId]),
     epgsql:close(C).
     
 get_vmail_user(UserId) ->
@@ -202,7 +202,7 @@ get_phonecontext(UserId) ->
     
 set_phonecontext(UserId, PhoneContext)->
     C = connect(),
-    {ok, _} = epgsql:equery(C, "update srd_user set phonecontext=$1, updated=current_timestamp where id=$2", [PhoneContext,UserId]),
+    {ok, _} = epgsql:equery(C, "update srd_user set phonecontext=$1, updated=timezone('utc', now()) where id=$2", [PhoneContext,UserId]),
     epgsql:close(C).
         
 %%%===================================================================
