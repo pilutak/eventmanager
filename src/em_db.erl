@@ -54,7 +54,18 @@ insert_white_event(UserId, Command, Event) ->
 
 get_events(<<"undefined">>) ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE inserted > current_date - integer '7' ORDER BY inserted ASC", []),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE status != 'ignored' and inserted > current_date - integer '7' ORDER BY inserted ASC", []),
+    ok = epgsql:close(C),    
+    case Rows of
+        [] -> [];
+        _ -> Rows,
+            %?INFO_MSG("Rows: ~p~n", [Rows]), 
+            [events_to_json(P) || P <- Rows]
+    end;
+
+get_events(<<"false">>) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE status != 'ignored' and inserted > current_date - integer '7' ORDER BY inserted ASC", []),
     ok = epgsql:close(C),    
     case Rows of
         [] -> [];
@@ -64,9 +75,9 @@ get_events(<<"undefined">>) ->
     end;
 
 
-get_events(Status) ->
+get_events(<<"true">>) ->
     C = connect(),
-    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE status = $1 and inserted > current_date - integer '7' ORDER BY inserted ASC", [Status]),
+    {ok, _, Rows} = epgsql:equery(C, "select id, user_id, command, status, extract(epoch from inserted) as datetime from em_event WHERE inserted > current_date - integer '7' ORDER BY inserted ASC", []),
     ok = epgsql:close(C),    
     case Rows of
         [] -> [];

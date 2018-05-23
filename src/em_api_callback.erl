@@ -16,8 +16,8 @@ handle('GET',[<<"alivecheck">>], _Req) ->
 
 
 handle('GET', [<<"events">>], Req) ->
-	Status = elli_request:get_arg_decoded(<<"status">>, Req, <<"undefined">>),
-	Response = em_db:get_events(Status),
+	AllEvents = elli_request:get_arg_decoded(<<"all">>, Req, <<"undefined">>),
+	Response = em_db:get_events(AllEvents),
 	%Response = #{'id' => 1, 'user' => <<"admin">>, command => <<"UserAdd">>, status => <<"completed">>},
     %Response1 = jsx:encode(Response),    
 	ResponseBody = term_to_json(Response),
