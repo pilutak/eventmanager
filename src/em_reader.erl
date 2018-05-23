@@ -167,11 +167,14 @@ persist_event(true, UserId, CommandType, Data) ->
 persist_event(false, UserId, CommandType, Data) ->
     em_db:insert_white_event(UserId, CommandType, Data).
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
-
-
-    
+ 
 fail_event(Id) ->
     em_db:fail_event(Id).
     %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
 
-            
+fix_userid(UserId) ->
+    case UserId of
+        undefined -> "*XS localhost Admin*";
+        _-> UserId
+    end.
+    
