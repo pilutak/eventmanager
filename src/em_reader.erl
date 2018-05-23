@@ -129,7 +129,7 @@ parser_message('BroadsoftDocument', Data)->
     [User|_Other_ignored]=em_utils:get_elements(userId,em_utils:get_element_childs(Data)),
     CommandType = em_utils:get_element_attributes('xsi:type',Command),
     UserId = em_utils:get_element_text(User),
-    {UserId, CommandType, Command};
+    {fix_userid(UserId), CommandType, Command};
     
     %{em_utils:get_element_attributes('xsi:type',Command),Command};
 
