@@ -12,4 +12,5 @@ deploy:
   file: em-0.2.11.tar.gz
   on:
     repo: timezone4/eventmanager
+    tags: true
 
