@@ -52,7 +52,7 @@ init(Parent, Host) ->
 
 
 connect(State=#state{host=Host}) ->
-    case gen_tcp:connect(Host, 8025, [{buffer, 32768},{active, once},{packet, line}], 10000) of
+    case gen_tcp:connect(Host, 8025, [{buffer, 65536},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
 	    %{ok,Dir}=file:get_cwd(),
         ?INFO_MSG("Socket connected: ~p~n", [Host]),
