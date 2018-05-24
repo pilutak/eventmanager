@@ -1,5 +1,6 @@
 language: erlang
 script: make clean && rm -rf ./.git && make tests
+after_success: make rel && cp _rel/em/em-*.tar.gz em.tar.gz
 notifications:
   email: false
 otp_release:
