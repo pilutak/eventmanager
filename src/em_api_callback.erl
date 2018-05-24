@@ -115,6 +115,7 @@ handle('DELETE', [<<"groups">>, Id], _Req) ->
 handle(_, _, _Req) ->
     {404, [], <<"Not Found">>}.
 
+
 %% @doc: Handle request events, like request completed, exception
 %% thrown, client timeout, etc. Must return 'ok'.
 handle_event(_Event, _Data, _Args) ->
