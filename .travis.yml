@@ -9,7 +9,7 @@ deploy:
   provider: releases
   api_key:
     secure: BMAiWqmR2DBWZsUEEXo7jqo5RP7xXhu9XAaeBgOamOdwkbTaoiM+eB+oM9NxCpupZKOtODx/mUp7Ie7MlYQst94VUtBuvPO79ZbFTyQ/Ls98qyARn0/i4wL8u4OEzxXKCJLbOiR+T0GlQnFYI07t50BWXwmvE9dXX/lHdfg8t3KGm3mA+SeU7EupNRMbdnWo6y9L0Mj2SzXSoyNUSH5RydQXLG9VMuMA33O2KlWJCTelZnbxB8y2BcnOpyg6B4trGcmbvLupRsFnEqnM8xpIatyHAxZKeGYdA9x7xnRTtrlGCdRb1tc8IlWq0TQYlkJsBfQxUURDeY+stXnXWqf0l82RPidpzK0OFtC7vQGDyFjqe8K62pUlTjQ1iK6K3ePt6mB1tKBO5QZlqgtrp6fRXBS3QnIffqeBxVEBohz4m40TamM3O0blmem9LVSAoKBoRTVF7wwIY+ItdC7AjN16z11eQU4qwe8916QuG8ivJ57cd7Rh4sjOaAeoqsoy04GjvF5xu+JZvy9t2oGkafeJvN9na1o8PGIm3kaSSnjONjUER/9wLyKSuogCXA9UYB+xE+fNBqm0YwVbm2kdBMWSp3R8uWSVw8QTPixJXqTWEg1+HUWGxswKIIvtfoD/L+E7GMSaR3fF2/yd+cSfj4Roz/MwxBX1PpAHoEo29UdVLx8=
-  file: em-0.2.11.tar.gz
+  file: em.tar.gz
   on:
     repo: timezone4/eventmanager
     tags: true
