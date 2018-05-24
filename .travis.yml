@@ -1,5 +1,5 @@
 language: erlang
-script: make clean && rm -rf ./.git && make tests
+script: make clean && make tests
 after_success: make rel && cp _rel/em/em-*.tar.gz em.tar.gz
 notifications:
   email: false
