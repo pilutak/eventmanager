@@ -24,7 +24,7 @@ make rel run
 
 ```
 
-Configuration is done in the sys.config file
+Configuration is done in the /etc/em/em.config file
 ```
 [
     {em,
