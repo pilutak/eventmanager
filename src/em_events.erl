@@ -190,7 +190,6 @@ processor(Id, modify_user, Message) ->
     UserName = em_utils:get_element_text(U),
     Phone = fix_nil(P),
 
-    io:format(StateProvince),
     case StateProvince of
         undefined -> ok;
         nil ->
