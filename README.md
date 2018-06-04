@@ -85,6 +85,13 @@ Configuration is done in the /etc/em/em.config file
 ].
 
 ```
+
+# System Architecture
+
+# Status
+
+# Tests
+
 ## License
 
 Copyright 2018 Thomas Elsgaard
