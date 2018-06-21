@@ -88,7 +88,35 @@ Configuration is done in the /etc/em/em.config file
 
 # System Architecture
 
+EM (Eventmanager) receives OCI-R events from the BW AS (Broadworks application server). OCI-R events are queued in the BW AS, and EM processes events synchronously one by one. 
+
+The reader module extracts the commandtypem and performs a lookup to find a matching "processor". If no processor is found, the event is marked as "IGNORED", if the commandtype is found in the processor map, the event is initially marked as "PENDING".
+
+A new process is spawned, and the event is processed by the events module. Based on the commandtype, following processors can be called:
+
+- create_service
+- modify_service
+- delete_service
+- create_user
+- modify_user
+- delete_user
+- set_password
+- create_trunk
+- modify_group_vp
+- modify_user_vm
+- delete_group
+- create_domain
+- delete_domain
+
+The events module extracts parameters from the event needed in order to apply business logic, and inserts the parameters into an event record, which depending on the processor type, is processed by an em_manager_* module:
+
+- em_manager_hss
+- em_manager_surgemail
+
+Manager modules are reposinble for applying the event specific business logic. After applying business logic, the EM might send one or multiple request to the EMA/PG or surgemail nodes. If the event prcessing is successfull, the event status in the EM DB is updated to either: completed or failed.
+
 # Status
+EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Ericcson layered architecture.
 
 # Tests
 
