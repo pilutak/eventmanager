@@ -87,17 +87,6 @@ get_element_childs([]) -> undefined;
 get_element_childs(#xmlElement{content = []}) -> undefined;
 get_element_childs(#xmlElement{content = Childs}) -> Childs.
 
-log(Term) ->
-    {ok,S} = file:open("em2.log",[append]),
-    io:format(S,"~p ~n",[Term]),
-    file:close(S).
-
-log(Message,List) ->
-    {ok,S} = file:open("em2.log",[append]),
-    io:format(S,Message,List),
-    file:close(S).
-
-
 % We use this to create a temporarily SIP password. The password is later
 % overwritten by an seperate event (not for virtual users, the password remains).
 randchar(N) ->
