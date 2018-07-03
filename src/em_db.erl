@@ -118,11 +118,11 @@ fail_event(Id) ->
 %%% Internal functions
 %%%===================================================================
 connect() ->
-    {ok, Args} = application:get_env(em, em_db),
-    Hostname = proplists:get_value(hostname, Args),
-    Database = proplists:get_value(database, Args),
-    Username = proplists:get_value(username, Args),
-    Password = proplists:get_value(password, Args),
+    %{ok, Args} = application:get_env(em, em_db),
+    Hostname = econfig:get_value(em, "em_db", "em_db_host"),
+    Database = econfig:get_value(em, "em_db", "em_db_database"),
+    Username = econfig:get_value(em, "em_db", "em_db_username"),
+    Password = econfig:get_value(em, "em_db", "em_db_password"),
 
     {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 4000}]),
     C.

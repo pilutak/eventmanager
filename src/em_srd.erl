@@ -209,12 +209,10 @@ set_phonecontext(UserId, PhoneContext)->
 %%% Internal functions
 %%%===================================================================
 connect() ->
-    
-    {ok, Args} = application:get_env(em, em_srd),
-    Hostname = proplists:get_value(hostname, Args),
-    Database = proplists:get_value(database, Args),
-    Username = proplists:get_value(username, Args),
-    Password = proplists:get_value(password, Args),
+    Hostname = econfig:get_value(em, "srd_db", "srd_db_host"),
+    Database = econfig:get_value(em, "srd_db", "srd_db_database"),
+    Username = econfig:get_value(em, "srd_db", "srd_db_username"),
+    Password = econfig:get_value(em, "srd_db", "srd_db_password"),
     
     {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 4000}]),
     C.
