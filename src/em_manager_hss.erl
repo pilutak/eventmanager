@@ -422,9 +422,9 @@ open_ema_session() ->
     User = econfig:get_value(em, "ema", "username"),
     Pass = econfig:get_value(em, "ema", "password"),
         
-    case cai3g:open(PriHost, User, Pass) of
+    case em_ema:open(PriHost, User, Pass) of
         {ok, C} -> {ok, C};
-        _Other -> cai3g:open(SecHost, User, Pass)
+        _Other -> em_ema:open(SecHost, User, Pass)
     end.
         
 close_ema_session(C) ->
