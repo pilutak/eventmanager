@@ -15,7 +15,7 @@
 -module(em_reader_sup).
 -behaviour(supervisor).
 
--export([start_link/0, open/1]).
+-export([start_link/0]).
 
 %% supervisor.
 -export([init/1]).
@@ -28,14 +28,10 @@
 
 -spec start_link() -> {ok, pid()}.
 start_link() ->
-    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []).
-
-open(Host) ->
-    {ok, Pid} = supervisor:start_child(?MODULE, [Host]),
-    register(list_to_atom(Host), Pid).
+    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, []),
+    {ok, _Pid} = supervisor:start_child(?MODULE, []).
 
 %% supervisor.
-
 init([]) ->
     Procs = [{em_reader, {em_reader, start_link, []},
 	      permanent, 5000, worker, [em_reader]}],

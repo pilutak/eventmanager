@@ -30,13 +30,6 @@ init([]) ->
          infinity,
          supervisor,
          [em_reader_sup]},
-    EMA =
-        {em_ema,
-         {em_ema, start_link, []},
-         permanent,
-         5000,
-         worker,
-        [em_ema]},
 
     SURGEMAIL =
         {em_surgemail,
@@ -57,4 +50,4 @@ init([]) ->
         [elli]},
     
     {ok,{{one_for_one,10,1},
-	 [ElliSpec, EMA, SURGEMAIL, EMOCIRSUP]}}.    
+	 [ElliSpec, EMOCIRSUP, SURGEMAIL]}}.    

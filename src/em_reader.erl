@@ -14,42 +14,33 @@
 
 -module(em_reader).
 
--export([
-    start_connection/0,
-    start_link/1,
-    init/2]).
+-export([start_link/0,
+    init/1]).
 
 -include("../include/em.hrl").
 
--record(state, { socket, host, ema_url, ema_user, ema_pass }).
+-define(SERVER, ?MODULE).
+-record(state, { socket, host}).
   
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-start_connection() ->
-    {ok, Hosts} = application:get_env(em, bw_hosts),
-        lists:foreach(
-          fun(I) ->
-	          {ok, _} = supervisor:start_child(em_reader_sup, [I])
-          end, Hosts).
 
       
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
-start_link(Host) ->
-    proc_lib:start_link(?MODULE, init, [self(), Host]).
+start_link() ->
+    proc_lib:start_link(?MODULE, init, [self()]).
 
-
-init(Parent, Host) ->
+init(Parent) ->
     process_flag(trap_exit, true),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
-    register(list_to_atom(Host),self()),
+    econfig:register_config(em, ["/etc/em/em.ini"], [autoreload]),
+    Host = econfig:get_value(em, "broadworks", "host"),
     ?INFO_MSG("You are my creator, but I am your master; - obey! ~n", []),	
     connect(#state{socket = undefined, host = Host}).
-
 
 connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 65536},{active, once},{packet, line}], 10000) of
@@ -69,7 +60,6 @@ connect(State=#state{host=Host}) ->
 	    connect(State)
 
     end.
-
  
 % Main loop
 loop(State) ->

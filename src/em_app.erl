@@ -21,17 +21,7 @@
 -export([stop/1]).
 
 start(_Type, _Args) ->
-    case em_sup:start_link() of
-	{ok, Pid} ->
-	    case em_reader:start_connection() of
-		ok ->
-		    {ok, Pid};
-		Err ->
-		    Err
-	    end;
-	Error ->
-	    Error
-    end.
+        em_sup:start_link().
 
 stop(_State) ->
-    ok.
+        ok.
