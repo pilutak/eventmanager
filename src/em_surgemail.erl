@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {surgemail_hosts}).
+-record(state, {}).
 
 %%%===================================================================
 %%% API
@@ -62,8 +62,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, Args} = application:get_env(em, em_surgemail),
-    {ok, #state{surgemail_hosts = Args}}.
+    econfig:register_config(em, ["/etc/em/em.ini"], [autoreload]),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -80,7 +80,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({send_request, Request}, _From, State) ->
-    {ok, _} = send(Request, State),
+    {ok, _} = send(Request),
     {reply, ok, State};
         
 handle_call(_Request, _From, State) ->
@@ -142,13 +142,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
   
-send(Request, State=#state{surgemail_hosts = Hosts}) ->
+send(Request) ->
     ?INFO_MSG("Sending request to primary Surgemail ~n", []), 
-    Primary = proplists:get_value(primary, Hosts),
-    Hostname = proplists:get_value(hostname, Primary),
-    Port = proplists:get_value(port, Primary),
-    Username = proplists:get_value(username, Primary),
-    Password = proplists:get_value(password, Primary),
+    Hostname = econfig:get_value(em, "surgemail", "primary_host"),
+    Port = econfig:get_value(em, "surgemail", "port"),
+    Username = econfig:get_value(em, "surgemail", "username"),
+    Password = econfig:get_value(em, "surgemail", "password"),
+    
     Url = "http://" ++ Hostname ++ ":" ++ Port ++ Request, 
     %?INFO_MSG("Surgemail URL: ~p~n", [Url]), 
 
@@ -160,18 +160,17 @@ send(Request, State=#state{surgemail_hosts = Hosts}) ->
                 exit(http_code_unexpected);
             {error, {failed_connect, _Error}} ->
                 ?INFO_MSG("Connect failed towards primary surgemail: ~p~n", [Hostname]),
-                send_secondary(Request, State);
+                send_secondary(Request);
             {error, Reason} ->
                 exit(Reason)
     end. 
 
-send_secondary(Request, #state{surgemail_hosts = Hosts}) ->
+send_secondary(Request) ->
     ?INFO_MSG("Sending request to secondary Surgemail ~n", []), 
-    Secondary = proplists:get_value(secondary, Hosts),
-    Hostname = proplists:get_value(hostname, Secondary),
-    Port = proplists:get_value(port, Secondary),
-    Username = proplists:get_value(username, Secondary),
-    Password = proplists:get_value(password, Secondary),
+    Hostname = econfig:get_value(em, "surgemail", "secondary_host"),
+    Port = econfig:get_value(em, "surgemail", "port"),
+    Username = econfig:get_value(em, "surgemail", "username"),
+    Password = econfig:get_value(em, "surgemail", "password"),
     Url = "http://" ++ Hostname ++ ":" ++ Port ++ Request, 
     %?INFO_MSG("Surgemail URL: ~p~n", [Url]), 
 

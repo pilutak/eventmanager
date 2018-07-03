@@ -26,10 +26,8 @@
 %%% API
 %%%===================================================================
 create_domain(Domain) ->
-    {ok, Hosts} = application:get_env(em, em_surgemail),
-    Primary = proplists:get_value(primary, Hosts),
-    Username = proplists:get_value(username, Primary),
-    Password = proplists:get_value(password, Primary),
+    Username = econfig:get_value(em, "surgemail", "username"),
+    Password = econfig:get_value(em, "surgemail", "password"),
 
     Param1 = "/cgi/admin.cgi?show=simple_msg.xml&",
     Param2 = "cmd=global_misc_save&",
@@ -54,8 +52,7 @@ delete_domain(Domain) ->
     em_surgemail:request(Request).
 
 create_account(MailUser, MailPass) ->
-    {ok, Args} = application:get_env(em, em_surgemail),
-    DomainPass = proplists:get_value(domain_password, Args),
+    DomainPass = econfig:get_value(em, "surgemail", "domain_password"),
     [UserPart, DomainPart] = string:split(MailUser, "@"), 
     
     Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
@@ -104,8 +101,7 @@ modify(Event) ->
 %%%===================================================================
 do_delete_account(User, MailUser) ->
     ?INFO_MSG("Deleting surgemail account: ~p~n", [MailUser]), 
-    {ok, Args} = application:get_env(em, em_surgemail),
-    DomainPass = proplists:get_value(domain_password, Args),
+    DomainPass = econfig:get_value(em, "surgemail", "domain_password"),
     [UserPart, DomainPart] = string:split(MailUser, "@"), 
     
     Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
@@ -126,21 +122,5 @@ do_delete_account(User, MailUser) ->
 %%%===================================================================
 %-ifdef(TEST).
 %-include_lib("eunit/include/eunit.hrl").
-
-%plan_pubid_change_test_() ->
-%    [?_assert(plan_pubid_change(nil, "user@tz4.com", "user@tz4.com") =:= ignore),
-%     ?_assert(plan_pubid_change(nil, "hello@tz4.com", "user@tz4.com") =:= delete),
-%     ?_assert(plan_pubid_change("hello@tz4.com", "hello@tz4.com", "user@tz4.com") =:= ignore),
-%     ?_assert(plan_pubid_change("hello@tz4.com", "world@tz4.com", "user@tz4.com") =:= update)
-%    ].
-    
-% plan_phone_change_test_() ->
-%    [?_assert(plan_phone_change(nil, "NODATA") =:= ignore),
-%     ?_assert(plan_phone_change(nil, "299123456") =:= delete),
-%     ?_assert(plan_phone_change(undefined, "299123456") =:= delete),     
-%     ?_assert(plan_phone_change("299123456", "299123456") =:= ignore),
-%     ?_assert(plan_phone_change("299123456", "NODATA") =:= create),
-%     ?_assert(plan_phone_change("299123456", "111111") =:= update)
-%    ].
 %-endif.       
    
