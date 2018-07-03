@@ -27,8 +27,6 @@
     get_element_childs/1,
     get_element_name/1,
     get_element_text/1,
-    log/1,
-    log/2,
     randchar/1,
     md5_hex/1
     ]).
