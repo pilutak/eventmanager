@@ -248,39 +248,39 @@ get_session(Body) ->
 %%%===================================================================
 %%% Unit Tests
 %%%===================================================================
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
+%-ifdef(TEST).
+%-include_lib("eunit/include/eunit.hrl").
 
-serialize_test_() ->
-    {ok, XML1} = file:read_file("test/user_create_req.xml"),
-    XML2 = binary_to_list(XML1),
-    [?_assert(serialize(sessionid(), dummy_user_mo()) =:= XML2)].
+%serialize_test_() ->
+%    {ok, XML1} = file:read_file("test/user_create_req.xml"),
+%    XML2 = binary_to_list(XML1),
+%    [?_assert(serialize(sessionid(), dummy_user_mo()) =:= XML2)].
 
 
-fault_resp_test_() ->
-    {ok, XML1} = file:read_file("test/user_create_error.xml"),
-    {ok, XML3} = file:read_file("test/user_login_error.xml"),
+%fault_resp_test_() ->
+%    {ok, XML1} = file:read_file("test/user_create_error.xml"),
+%    {ok, XML3} = file:read_file("test/user_login_error.xml"),
     
-    XML2 = binary_to_list(XML1),
-    XML4 = binary_to_list(XML3),
+%    XML2 = binary_to_list(XML1),
+%    XML4 = binary_to_list(XML3),
     
     
-    [?_assert(process_fault(XML2) =:= {error,{4006,13004}}),
-    ?_assert(process_fault(XML4) =:= {error,{3014,1004}})].
+%    [?_assert(process_fault(XML2) =:= {error,{4006,13004}}),
+%    ?_assert(process_fault(XML4) =:= {error,{3014,1004}})].
 
         
-dummy_user_mo() ->    
-    Ns1 = "http://schemas.ericsson.com/ma/HSS/",
-    MoType = "IMSAssociation@http://schemas.ericsson.com/ma/HSS/",
-    MoId = "test@test.com",
-    {'cai3:Create', [{'xmlns:hss', Ns1}], [
-        {'cai3:MOType',[MoType]},
-        {'cai3:MOId', [], [
-            {'hss:associationId', [], [MoId]}]},
-        {'cai3:MOAttributes',[], [
-            {'hss:CreateIMSAssociation', [{'associationId', MoId}],[
-                    {'hss:associationId',[MoId]}]}]}]}.
+%dummy_user_mo() ->    
+%    Ns1 = "http://schemas.ericsson.com/ma/HSS/",
+%    MoType = "IMSAssociation@http://schemas.ericsson.com/ma/HSS/",
+%    MoId = "test@test.com",
+%    {'cai3:Create', [{'xmlns:hss', Ns1}], [
+%        {'cai3:MOType',[MoType]},
+%        {'cai3:MOId', [], [
+%            {'hss:associationId', [], [MoId]}]},
+%        {'cai3:MOAttributes',[], [
+%            {'hss:CreateIMSAssociation', [{'associationId', MoId}],[
+%                    {'hss:associationId',[MoId]}]}]}]}.
                     
-sessionid() ->
-    "963983366d244eab80232b589be72e39".
--endif.       
+%sessionid() ->
+%    "963983366d244eab80232b589be72e39".
+%-endif.       
