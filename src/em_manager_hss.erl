@@ -434,7 +434,8 @@ send_to_ema(C, Req) ->
     Resp = em_ema:send(C, Req),
     case Resp of
         {ok, Payload} -> {ok, Payload};
-        {error, {4006, 13005}} -> {ok, "Association do not exist"};
+        {error, {4006, 13005}} -> ?INFO_MSG("Association do not exist: ~p~n", [Resp]),
+                                    {ok, "Association do not exist"};
         Other -> ?ERROR_MSG("EMA request error: ~p~n", [Other]),
             Other
     end.
