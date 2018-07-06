@@ -39,23 +39,20 @@ init(Parent) ->
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     econfig:register_config(em, ["/etc/em/em.ini"], [autoreload]),
     Host = econfig:get_value(em, "broadworks", "host"),
-    ?INFO_MSG("You are my creator, but I am your master; - obey! ~n", []),	
     connect(#state{socket = undefined, host = Host}).
 
 connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 65536},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
-	    %{ok,Dir}=file:get_cwd(),
-        ?INFO_MSG("Socket connected: ~p~n", [Host]),
-	    %?LOG("Connected (em2.log located at ~p ) ~n",Dir),
+        lager:info("Socket connected: ~s", [Host]),
 	    loop(State#state{socket=Sock});
 
         {error,timeout} ->
-        ?ERROR_MSG("Socket timeout, reconnecting: ~p~n", [Host]),
+        lager:error("Socket timeout, reconnecting: ~s", [Host]),
 	    connect(State);
 
         {error,Reason} ->
-	    ?ERROR_MSG("Socket timeout, reconnecting: ~p~n", [Reason]),
+	    lager:error("Socket timeout, reconnecting: ~s", [Reason]),
 	    timer:sleep(10000),
 	    connect(State)
 
@@ -69,12 +66,12 @@ loop(State) ->
 	    process(Data,State);
 
 	{tcp_closed, _} ->
-	    ?ERROR_MSG("Socket closed, reconnecting: ~n", []),
+	    lager:error("Socket closed, reconnecting"),
 	    timer:sleep(10000),
 	    connect(State);
 
 	{tcp_error, _, Reason} ->
-	    ?ERROR_MSG("Socket error: ~p~n", [Reason]);
+	    lager:error("Socket error: ~s", [Reason]);
 
 
 	Any when is_tuple(Any), is_pid(element(2, Any)) ->
@@ -84,7 +81,7 @@ loop(State) ->
     
 	Any ->
 	    %error_logger:error_msg("Unexpected message: ~w~n", [Any]),
-        ?ERROR_MSG("Unexpected message: ~p~n", [Any]),
+        lager:error("Unexpected message: ~s", [Any]),
 	    loop(State)
     end.
   
@@ -121,11 +118,8 @@ parser_message('BroadsoftDocument', Data)->
     UserId = em_utils:get_element_text(User),
     {fix_userid(UserId), CommandType, Command};
     
-    %{em_utils:get_element_attributes('xsi:type',Command),Command};
-
 parser_message(_,_)->
     {ignored, ignored, undefined}.
-    
     
 await_result(Pid,Id) ->
     receive

@@ -83,15 +83,15 @@ modify(Event) ->
     
     case {MailUser, MailPass, CurrentMailUser} of
         {undefined, undefined, _} -> 
-            ?INFO_MSG("Ignoring (mailuser do not exist): ~n", []), 
+            lager:info("Ignoring (mailuser do not exist)"), 
             ok;
             
         {X, _, X} -> 
-            ?INFO_MSG("Ignoring (mailuser already set): ~n", []), 
+            lager:info("Ignoring (mailuser already set)"), 
             ok;
             
         {_, _, "NODATA"} -> 
-            ?INFO_MSG("creating vmail accpount: ~p~n", [MailUser]),
+            lager:info("creating vmail accpount: ~s", [MailUser]),
             em_srd:set_vmail(User, MailUser, MailPass),
             create_account(MailUser, MailPass)
     end.
@@ -100,7 +100,7 @@ modify(Event) ->
 %%% Internal functions
 %%%===================================================================
 do_delete_account(User, MailUser) ->
-    ?INFO_MSG("Deleting surgemail account: ~p~n", [MailUser]), 
+    lager:info("Deleting surgemail account: ~s", [MailUser]), 
     DomainPass = econfig:get_value(em, "surgemail", "domain_password"),
     [UserPart, DomainPart] = string:split(MailUser, "@"), 
     

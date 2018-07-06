@@ -46,7 +46,6 @@ processor(Id, create_service, Message) ->
         phonecontext=> "tg.gl"
         
     },
-    %ok = em_processor_service:create_user(Event);
     em_manager_hss:create_user(Event),
     em_db:complete_event(Id);
 
@@ -111,7 +110,7 @@ processor(Id, modify_group_vp, Message) ->
     em_db:complete_event(Id);
 
 processor(Id, modify_user_vm, Message) ->
-    ?INFO_MSG("Start processing vmail: ~n", []), 
+    lager:info("Start processing vmail"), 
     InsideCommand = em_utils:get_element_childs(Message),
     [U] = em_utils:get_elements(userId, InsideCommand),
     [G] = em_utils:get_elements(groupMailServerUserId, InsideCommand),
@@ -119,7 +118,7 @@ processor(Id, modify_user_vm, Message) ->
     UserName = em_utils:get_element_text(U),
     MailUser = em_utils:get_element_text(G),
     MailPass = em_utils:get_element_text(P),
-    ?INFO_MSG("Processing vmail, LOADING EVENT: ~n", []), 
+    lager:info("Processing vmail, LOADING EVENT"), 
                     
     Event = #{
         user        => UserName,
@@ -213,7 +212,7 @@ processor(Id, modify_user, Message) ->
          undefined when Phone == undefined ->
              ok;
          undefined when Phone /= undefined ->
-              ?INFO_MSG("Modify user ~n", []),
+              lager:info("Modify user"),
               Event = #{
                   user        => UserName,
                   pubid       => fix_nil(L),
@@ -229,7 +228,7 @@ processor(Id, modify_user, Message) ->
               em_manager_hss:modify_user(Event);
                   
          _  -> 
-             ?INFO_MSG("Modify trunk user~n", []),
+             lager:info("Modify trunk user"),
              Event1 = #{
                  user        => UserName,
                  pubid       => fix_nil(LP),
@@ -326,7 +325,7 @@ processor(Id, delete_group, Message) ->
     GroupId = em_utils:get_element_text(G),
     Users = em_srd:get_users(GroupId),
     
-    ?INFO_MSG("Deleting all users in group: ~p~n", [GroupId]),
+    lager:info("Deleting all users in group: ~s", [GroupId]),
     lists:foreach(
         fun(I) ->
             {I1} = I,

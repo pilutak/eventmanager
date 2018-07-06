@@ -12,10 +12,10 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--define(ERROR_MSG(Format, Args),
-	error_logger:error_msg("(~p:~p:~p) " ++ Format,
-			       [self(), ?MODULE, ?LINE | Args])).
+%-define(ERROR_MSG(Format, Args),
+%	error_logger:error_msg("(~p:~p:~p) " ++ Format,
+%			       [self(), ?MODULE, ?LINE | Args])).
 
--define(INFO_MSG(Format, Args),
-	error_logger:info_msg("(~p:~p:~p) " ++ Format,
-			       [self(), ?MODULE, ?LINE | Args])).
+%-define(INFO_MSG(Format, Args),
+%	error_logger:info_msg("(~p:~p:~p) " ++ Format,
+%			       [self(), ?MODULE, ?LINE | Args])).

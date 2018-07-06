@@ -20,24 +20,24 @@
 %%% API
 %%%===================================================================
 create_user(Event) ->
-    ?INFO_MSG("Creating user: ~p~n", [maps:get(user, Event)]),
+    lager:info("Creating user: ~s", [maps:get(user, Event)]),
     create_ims_association(Event),
-    ?INFO_MSG("Created user: ~p~n", [maps:get(user, Event)]).
+    lager:info("Created user: ~s", [maps:get(user, Event)]).
     
 delete_user(Event) ->
-    ?INFO_MSG("Deleting user: ~p~n", [maps:get(user, Event)]),
+    lager:info("Deleting user: ~s", [maps:get(user, Event)]),
     delete_ims_association(Event),
-    ?INFO_MSG("Deleted user: ~p~n", [maps:get(user, Event)]).
+    lager:info("Deleted user: ~s", [maps:get(user, Event)]).
     
 modify_user(Event) ->
-    ?INFO_MSG("Modifying user: ~p~n", [maps:get(user, Event)]),    
+    lager:info("Modifying user: ~s", [maps:get(user, Event)]),    
     CurrentUserType = em_srd:get_type(Event),
     User = maps:get(user, Event),
     Group = em_srd:get_group(User),
 
     case CurrentUserType of
         "trunk" -> 
-            ?INFO_MSG("Modify trunk user type to user: ~n", []),
+            lager:info("Modify trunk user type to user"),
             delete_user(Event),
             Event5 = maps:put(group, Group, Event),
             Event6 = maps:update(pubid, User, Event5),
@@ -48,7 +48,7 @@ modify_user(Event) ->
             execute_plan(Plan, Event8);  
             
         "pilot" -> 
-            ?INFO_MSG("Modify pilot user type to user: ~n", []),
+            lager:info("Modify pilot user type to user"),
             delete_user(Event),
             Event5 = maps:put(group, Group, Event),
             Event6 = maps:update(pubid, User, Event5),
@@ -58,32 +58,32 @@ modify_user(Event) ->
             Plan = make_plan(Event8),
             execute_plan(Plan, Event8);
             
-        "user" ->    ?INFO_MSG("Modify type is user: ~n", []),
+        "user" ->    lager:info("Modify type is user"),
                      Plan1 = make_plan(Event),
                      execute_plan(Plan1, Event);
-        "virtual" -> ?INFO_MSG("Modify type is virtual: ~n", []), 
+        "virtual" -> lager:info("Modify type is virtual"), 
                      Plan1 = make_plan(Event),
                      execute_plan(Plan1, Event)
     end.
     
 modify_trunk_user(Event) ->
-    ?INFO_MSG("Modifying trunk user: ~p~n", [maps:get(user, Event)]),    
+    lager:info("Modifying trunk user: ~s", [maps:get(user, Event)]),    
     CurrentUserType = em_srd:get_type(Event),
     User = maps:get(user, Event),
     Group = em_srd:get_group(User),
     
     case CurrentUserType of
         "user" -> 
-            ?INFO_MSG("Changing user type to trunk: ~p~n", [User]),
+            lager:info("Changing user type to trunk: ~s", [User]),
             delete_user(Event),
             Event1 = maps:put(group, Group, Event),
             create_user(Event1),
             Plan1 = make_plan(Event1),
             execute_plan(Plan1, Event1);
-        "trunk" -> ?INFO_MSG("Already user type trunk: ~p~n", [User]),
+        "trunk" -> lager:info("Already user type trunk: ~s", [User]),
                 Plan2 = make_plan(Event),
                 execute_plan(Plan2, Event);
-        "pilot" -> ?INFO_MSG("Already user type pilot: ~p~n", [User]),
+        "pilot" -> lager:info("Already user type pilot: ~s", [User]),
                 Event5 = maps:put(type, 'pilot', Event),
                 Event6 = maps:update(csprofile, serviceprofile(trunk_pilot), Event5),
                 Plan2 = make_plan(Event6),
@@ -92,7 +92,7 @@ modify_trunk_user(Event) ->
     end.   
     
 set_password(#{ user := User} = Event) ->
-    ?INFO_MSG("Updating SIP password for user: ~p~n", [User]),
+    lager:info("Updating SIP password for user: ~s", [User]),
     {ok, C} = open_ema_session(),
     Req = em_cai3g:set_ims_pass(Event),    
     {ok, _} = send_to_ema(C, Req),
@@ -105,7 +105,7 @@ set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
     case Context == CContext of
         true -> ok;
         false -> 
-            ?INFO_MSG("Updating phone context for user: ~p~n", [User]),
+            lager:info("Updating phone context for user: ~s", [User]),
             Event1 = maps:put(pubid, PubId, Event),
             em_srd:set_phonecontext(User, Context),
             
@@ -119,7 +119,7 @@ set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
 %%% Internal functions
 %%%===================================================================
 make_plan(#{ user := User, pubid := PubId, phone := Phone } = Event) ->
-    ?INFO_MSG("Making plan for: ~p~n", [User]), 
+    lager:info("Making plan for: ~s", [User]), 
     CPubId = em_srd:get_sipuri(Event),
     CPhone = em_srd:get_e164(Event),
 
@@ -129,7 +129,7 @@ make_plan(#{ user := User, pubid := PubId, phone := Phone } = Event) ->
     {PubIdAction, PhoneAction}.
 
 execute_plan(Plan, Event) ->
-    ?INFO_MSG("Executing plan: ~p~n", [Plan]), 
+    lager:info("Executing plan: ~s", [Plan]), 
     case Plan of        
         {ignore, ignore} -> ok;
         {ignore, delete} -> delete_phone(Event);
@@ -153,7 +153,7 @@ execute_plan(Plan, Event) ->
                             update_impu_sip(Event),
                             create_phone(Event);
                                                 
-        Err -> ?ERROR_MSG("No execution selection found for plan: ~p~n", [Err])
+        Err -> lager:error("No execution found for plan: ~s", [Err])
     end.
 
 create_ims_association(#{ phone := "NODATA", type := Type} = Event) ->
@@ -434,9 +434,9 @@ send_to_ema(C, Req) ->
     Resp = em_ema:send(C, Req),
     case Resp of
         {ok, Payload} -> {ok, Payload};
-        {error, {4006, 13005}} -> ?INFO_MSG("Association do not exist: ~p~n", [Resp]),
+        {error, {4006, 13005}} -> lager:info("Association do not exist: ~s", [Resp]),
                                     {ok, "Association do not exist"};
-        Other -> ?ERROR_MSG("EMA request error: ~p~n", [Other]),
+        Other -> lager:error("EMA request error: ~s", [Other]),
             Other
     end.
    
