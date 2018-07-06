@@ -24,65 +24,42 @@ make rel run
 
 ```
 
-Configuration is done in the /etc/em/em.config file
+Configuration is done in the /etc/em/em.ini file
 ```
-[
-    {em,
-        [
-        {role, "master"},
-        {service_profiles, [
-            {virtual, "Profile1"},
-            {user, "Profile2"},
-            {trunk_pilot, "Profile3"},
-            {trunk_ddi, "Profile4"}
-        ]},
-        {em_db, [
-            {hostname, "127.0.0.1"},
-            {database, "alice"},
-            {username, "alice"},
-            {password, "alice"}
-        ]},
-        {em_srd, [
-            {hostname, "127.0.0.1"},
-            {database, "bob"},
-            {username, "bob"},
-            {password, "bob"}
-        ]},
-        {em_ema, [
-            {primary, [
-                {hostname, "127.0.0.1"},
-                {port, "8080"},
-                {url, "/CAI3G1.2/services/CAI3G1.2"},
-                {username, "alice"},
-                {password, "alice"}
-            ]},
-            {secondary, [
-                {hostname, "127.0.0.1"},
-                {port, "8080"},
-                {url, "/CAI3G1.2/services/CAI3G1.2"},
-                {username, "alice"},
-                {password, "alice"}
-            ]}
-        ]},
-        {em_surgemail, [
-            {domain_password, "alice"},
-            {primary, [
-                {hostname, "127.0.0.1"},
-                {port, "7026"},
-                {username, "alice"},
-                {password, "alice"}
-            ]},
-            {secondary, [
-                {hostname, "127.0.0.1"},
-                {port, "7026"},
-                {username, "alice"},
-                {password, "alice"}
-            ]}
-        ]},        
-        {bw_hosts,["127.0.0.1"]}
-        ]
-    }
-].
+[em_db]
+em_db_host=
+em_db_database=
+em_db_username=
+em_db_password=
+
+[srd_db]
+srd_db_host=
+srd_db_database=
+srd_db_username=
+srd_db_password=
+
+[ema]
+primary_host=
+secondary_host=
+username=
+password=
+
+[surgemail]
+domain_password=
+primary_host=
+secondary_host=
+port=
+username=
+password=
+
+[broadworks]
+host=
+
+[service_profiles]
+virtual=
+user=
+trunk_pilot=
+trunk_ddi=
 
 ```
 
