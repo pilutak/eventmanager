@@ -1,0 +1,27 @@
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cai3g="http://schemas.ericsson.com/cai3g1.2/">
+   <S:Header>
+      <cai3g:SessionId>963983366d244eab80232b589be72e39</cai3g:SessionId>
+   </S:Header>
+   <S:Body>
+      <ns2:Fault xmlns:ns2="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>ns2:Server</faultcode>
+         <faultstring>This is a server fault</faultstring>
+         <detail>
+            <Cai3gFault:Cai3gFault xmlns="http://schemas.ericsson.com/cai3g1.2/" xmlns:Cai3gFault="http://schemas.ericsson.com/cai3g1.2/">
+               <faultcode>4006</faultcode>
+               <faultreason>
+                  <reasonText>External error.</reasonText>
+               </faultreason>
+               <faultrole>MF</faultrole>
+               <details>
+                  <IMSFault:IMSFault xmlns="http://schemas.ericsson.com/ma/HSS/" xmlns:IMSFault="http://schemas.ericsson.com/ma/HSS/">
+                     <errorcode>13004</errorcode>
+                     <errormessage>ASSOCIATION ALREADY DEFINED</errormessage>
+                     <errordetails>- [Processed by PG Node: TPEMA2-PL-4]</errordetails>
+                  </IMSFault:IMSFault>
+               </details>
+            </Cai3gFault:Cai3gFault>
+         </detail>
+      </ns2:Fault>
+   </S:Body>
+</S:Envelope>

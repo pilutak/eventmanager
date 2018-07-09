@@ -1,0 +1,24 @@
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Body>
+      <ns2:Fault xmlns:ns2="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope">
+         <faultcode>ns2:Client</faultcode>
+         <faultstring>This is a client fault</faultstring>
+         <detail>
+            <Cai3gFault:Cai3gFault xmlns="http://schemas.ericsson.com/cai3g1.2/" xmlns:Cai3gFault="http://schemas.ericsson.com/cai3g1.2/">
+               <faultcode>3014</faultcode>
+               <faultreason>
+                  <reasonText>Login failure.</reasonText>
+               </faultreason>
+               <faultrole>MF</faultrole>
+               <details>
+                  <PGFault:PGFault xmlns="http://schemas.ericsson.com/pg/1.0" xmlns:PGFault="http://schemas.ericsson.com/pg/1.0">
+                     <errorcode>1004</errorcode>
+                     <errormessage>Authentication failed</errormessage>
+                     <errordetails>User [1provuser] failed to authenticate</errordetails>
+                  </PGFault:PGFault>
+               </details>
+            </Cai3gFault:Cai3gFault>
+         </detail>
+      </ns2:Fault>
+   </S:Body>
+</S:Envelope>
