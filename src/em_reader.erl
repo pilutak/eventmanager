@@ -44,15 +44,15 @@ init(Parent) ->
 connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 65536},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
-        lager:info("Socket connected: ~s", [Host]),
+        logger:notice("Socket connected: ~p", [Host]),
 	    loop(State#state{socket=Sock});
 
         {error,timeout} ->
-        lager:error("Socket timeout, reconnecting: ~s", [Host]),
+        logger:error("Socket timeout, reconnecting: ~p", [Host]),
 	    connect(State);
 
         {error,Reason} ->
-	    lager:error("Socket timeout, reconnecting: ~s", [Reason]),
+	    logger:error("Socket timeout, reconnecting: ~p", [Reason]),
 	    timer:sleep(10000),
 	    connect(State)
 
@@ -66,12 +66,12 @@ loop(State) ->
 	    process(Data,State);
 
 	{tcp_closed, _} ->
-	    lager:error("Socket closed, reconnecting"),
+	    logger:error("Socket closed, reconnecting"),
 	    timer:sleep(10000),
 	    connect(State);
 
 	{tcp_error, _, Reason} ->
-	    lager:error("Socket error: ~s", [Reason]);
+	    logger:error("Socket error: ~s", [Reason]);
 
 
 	Any when is_tuple(Any), is_pid(element(2, Any)) ->
@@ -81,7 +81,7 @@ loop(State) ->
     
 	Any ->
 	    %error_logger:error_msg("Unexpected message: ~w~n", [Any]),
-        lager:error("Unexpected message: ~s", [Any]),
+        logger:error("Unexpected message: ~p", [Any]),
 	    loop(State)
     end.
   
@@ -124,20 +124,21 @@ parser_message(_,_)->
 await_result(Pid,Id) ->
     receive
         {'EXIT', Pid, normal} ->
-            %?ERROR_MSG("EXIT normal: ~p", [Pid]), 
             ok;
+
         {'EXIT', Pid, shutdown} -> 
-            %?ERROR_MSG("EXIT shutdown: ~p", [Pid]),
+            logger:error("Process EXIT shutdown: ~p", [Pid]),
             ok;
-        {'EXIT', Pid, _ } -> 
-            %?ERROR_MSG("EXIT other: ~p, ~p", [Pid, Reason]),
+
+        {'EXIT', Pid, Reason } -> 
+            logger:error("Process EXIT other: ~p, ~p", [Pid, Reason]),
             case Id of
                 ignored -> ok;
                 Id -> fail_event(Id)
             end,
             ok
     after 8000 ->
-            %?ERROR_MSG("Event process timeout: ~p", [Pid]),
+            logger:error("Event process timeout"),
             timeout
     end.
 
@@ -146,15 +147,15 @@ persist_event(_ ,_ ,ignored, undefined) ->
 persist_event(_,_ ,ignored, _) ->
     ignored;
 persist_event(true, UserId, CommandType, Data) ->
+    logger:debug("Persisting event: ~p, ~p, ~p", [UserId, CommandType, Data]),
     em_db:insert_event(UserId, CommandType, Data);
-    %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
 persist_event(false, UserId, CommandType, Data) ->
+    logger:debug("Persisting white event: ~p, ~p, ~p", [UserId, CommandType, Data]),
     em_db:insert_white_event(UserId, CommandType, Data).
-    %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
  
 fail_event(Id) ->
+    logger:error("Event failed: ~p", [Id]),
     em_db:fail_event(Id).
-    %?INFO_MSG("EVENT: ~p, ~p, ~p ~n", [UserId, CommandType, Data]).
 
 fix_userid(UserId) ->
     case UserId of

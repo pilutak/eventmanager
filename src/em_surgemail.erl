@@ -143,7 +143,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
   
 send(Request) ->
-    lager:info("Sending request to primary Surgemail"), 
+    logger:notice("Sending request to primary Surgemail"), 
     Hostname = econfig:get_value(em, "surgemail", "primary_host"),
     Port = econfig:get_value(em, "surgemail", "port"),
     Username = econfig:get_value(em, "surgemail", "username"),
@@ -159,14 +159,14 @@ send(Request) ->
             {ok,{{_,_OtherStatus,_},_Headers,_Body}} ->
                 exit(http_code_unexpected);
             {error, {failed_connect, _Error}} ->
-                lager:info("Connect failed towards primary surgemail: ~s", [Hostname]),
+                logger:notice("Connect failed towards primary surgemail: ~s", [Hostname]),
                 send_secondary(Request);
             {error, Reason} ->
                 exit(Reason)
     end. 
 
 send_secondary(Request) ->
-    lager:info("Sending request to secondary Surgemail"), 
+    logger:notice("Sending request to secondary Surgemail"), 
     Hostname = econfig:get_value(em, "surgemail", "secondary_host"),
     Port = econfig:get_value(em, "surgemail", "port"),
     Username = econfig:get_value(em, "surgemail", "username"),
@@ -181,7 +181,7 @@ send_secondary(Request) ->
             {ok,{{_,_OtherStatus,_},_Headers,_Body}} ->
                 exit(http_code_unexpected);
             {error, {failed_connect, Error}} ->
-                lager:error("Connect failed towards secondary surgemail: ~s", [Hostname]),
+                logger:error("Connect failed towards secondary surgemail: ~s", [Hostname]),
                 {error, Error};
             {error, Reason} ->
                 exit(Reason)
