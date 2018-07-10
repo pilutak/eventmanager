@@ -1,5 +1,5 @@
 language: erlang
-script: make clean && make tests
+script: make clean && make eunit
 after_success: make rel
 notifications:
   email: false
