@@ -85,7 +85,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({start_session, {Host, User, Pass}}, _From, State) ->
     case open_session(Host, User, Pass) of
-        {ok, SessionId} -> {reply, {ok, SessionId}, State#state{session = SessionId, host = Host}};
+        {ok, SessionId} -> 
+            {reply, {ok, SessionId}, State#state{session = SessionId, host = Host}};
         {error, Resp} -> {reply, {error, Resp}, State}
     end;
     
@@ -93,11 +94,6 @@ handle_call({command, Args}, _From, State=#state{session = SessionId, host = Hos
     Cmd = serialize(SessionId, Args),
     Reply = send_request(Host, Cmd),
     {reply, Reply, State};
-
-handle_call(terminate, _From, State=#state{session = SessionId, host = Host}) ->
-    Cmd = {'cai3:Logout',[],[{'cai3:sessionId',[SessionId]}]},
-    Reply = send_request(Host, serialize(SessionId, Cmd)),
-    {stop, normal, Reply, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -114,6 +110,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(stop, State) ->
+    close(State),    
     {stop, normal, State};
 
 
@@ -243,7 +240,12 @@ get_session(Body) ->
         SessionId -> {ok, SessionId}
     end.
     
-                
+close(#state{session = SessionId, host = Host}) ->
+    Cmd = {'cai3:Logout',[],[{'cai3:sessionId',[SessionId]}]},
+    send_request(Host, serialize(SessionId, Cmd)).
+    
+    
+                    
 
 %%%===================================================================
 %%% Unit Tests
