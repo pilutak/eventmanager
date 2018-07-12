@@ -11,15 +11,12 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-
 -module(em_reader).
 
--export([start_link/0,
-    init/1]).
-
--include("../include/em.hrl").
+-export([start_link/0, init/1]).
 
 -define(SERVER, ?MODULE).
+
 -record(state, { socket, host}).
   
 %%%===================================================================
@@ -30,7 +27,6 @@
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
 start_link() ->
     proc_lib:start_link(?MODULE, init, [self()]).
 
@@ -73,7 +69,6 @@ loop(State) ->
 	{tcp_error, _, Reason} ->
 	    logger:error("Socket error: ~s", [Reason]);
 
-
 	Any when is_tuple(Any), is_pid(element(2, Any)) ->
 	    element(2, Any) ! {em_error, self(), {notowner,
 	    "Operations are restricted to the owner of the connection."}},
@@ -85,81 +80,9 @@ loop(State) ->
 	    loop(State)
     end.
   
-
-%% Parsing and dispatching of events
 process("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n", State) ->
     loop(State);
 
 process(Data, State) ->
-    {UserId, CommandType, Message} = top_parser(Data),
-    
-    Id = persist_event(maps:is_key(CommandType, em_events:processors()), UserId, CommandType, Data),
-    Pid = spawn_link(em_events, process, [Id, CommandType, Message]),
-    await_result(Pid, Id),
+    em_event_server:process_event(Data),
     loop(State).
-
-top_parser(Data) -> 
-    {ParsedMessage,_} = xmerl_scan:string(Data),
-    parser_message(em_utils:get_type_message(ParsedMessage), ParsedMessage).
-
-parser_message('BroadsoftOCIReportingDocument', Data)->
-    case em_utils:get_cdata(Data) of
-	[] ->
-	    {ignored, ignored,undefined};
-	CDATA ->
-	    {ParsedCDATA,_} = xmerl_scan:string(CDATA),
-	    parser_message(em_utils:get_type_message(ParsedCDATA), ParsedCDATA)
-    end;
-
-parser_message('BroadsoftDocument', Data)->
-    [Command|_Other_ignored]=em_utils:get_elements(command,em_utils:get_element_childs(Data)),
-    [User|_Other_ignored]=em_utils:get_elements(userId,em_utils:get_element_childs(Data)),
-    CommandType = em_utils:get_element_attributes('xsi:type',Command),
-    UserId = em_utils:get_element_text(User),
-    {fix_userid(UserId), CommandType, Command};
-    
-parser_message(_,_)->
-    {ignored, ignored, undefined}.
-    
-await_result(Pid,Id) ->
-    receive
-        {'EXIT', Pid, normal} ->
-            ok;
-
-        {'EXIT', Pid, shutdown} -> 
-            logger:error("Process EXIT shutdown: ~p", [Pid]),
-            ok;
-
-        {'EXIT', Pid, Reason } -> 
-            logger:error("Process EXIT other: ~p, ~p", [Pid, Reason]),
-            case Id of
-                ignored -> ok;
-                Id -> fail_event(Id)
-            end,
-            ok
-    after 8000 ->
-            logger:error("Event process timeout"),
-            timeout
-    end.
-
-persist_event(_ ,_ ,ignored, undefined) ->
-    ignored;
-persist_event(_,_ ,ignored, _) ->
-    ignored;
-persist_event(true, UserId, CommandType, Data) ->
-    logger:debug("Persisting event: ~p, ~p, ~p", [UserId, CommandType, Data]),
-    em_db:insert_event(UserId, CommandType, Data);
-persist_event(false, UserId, CommandType, Data) ->
-    logger:debug("Persisting white event: ~p, ~p, ~p", [UserId, CommandType, Data]),
-    em_db:insert_white_event(UserId, CommandType, Data).
- 
-fail_event(Id) ->
-    logger:error("Event failed: ~p", [Id]),
-    em_db:fail_event(Id).
-
-fix_userid(UserId) ->
-    case UserId of
-        undefined -> "*XS localhost Admin*";
-        _-> UserId
-    end.
-    

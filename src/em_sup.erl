@@ -31,6 +31,14 @@ init([]) ->
          supervisor,
          [em_reader_sup]},
 
+    EVENTSERVER =
+        {em_event_server,
+         {em_event_server, start_link, []},
+         permanent,
+         5000,
+         worker,
+        [em_event_server]},
+
     SURGEMAIL =
         {em_surgemail,
          {em_surgemail, start_link, []},
@@ -50,4 +58,4 @@ init([]) ->
         [elli]},
     
     {ok,{{one_for_one,10,1},
-	 [ElliSpec, EMOCIRSUP, SURGEMAIL]}}.    
+	 [ElliSpec, EMOCIRSUP, EVENTSERVER, SURGEMAIL]}}.    
