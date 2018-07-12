@@ -325,7 +325,7 @@ processor(Id, delete_group, Message) ->
     GroupId = em_utils:get_element_text(G),
     Users = em_srd:get_users(GroupId),
     
-    logger:notice("Deleting all users in group: ~s", [GroupId]),
+    logger:notice("Deleting all users in group: ~p", [GroupId]),
     lists:foreach(
         fun(I) ->
             {I1} = I,
