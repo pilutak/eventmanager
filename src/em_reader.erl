@@ -40,7 +40,7 @@ init(Parent) ->
 connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 65536},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
-        logger:notice("Socket connected: ~p", [Host]),
+        logger:info("Socket connected: ~p", [Host]),
 	    loop(State#state{socket=Sock});
 
         {error,timeout} ->

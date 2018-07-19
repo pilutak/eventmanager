@@ -20,35 +20,37 @@
 %%% API
 %%%===================================================================
 create_user(Event) ->
-    logger:notice("Creating user: ~p", [maps:get(user, Event)]),
+    logger:info("Creating user: ~p", [maps:get(user, Event)]),
     create_ims_association(Event),
-    logger:notice("Created user: ~p", [maps:get(user, Event)]).
+    logger:info("Created user: ~p", [maps:get(user, Event)]).
     
 delete_user(Event) ->
-    logger:notice("Deleting user: ~p", [maps:get(user, Event)]),
+    logger:info("Deleting user: ~p", [maps:get(user, Event)]),
     delete_ims_association(Event),
-    logger:notice("Deleted user: ~p", [maps:get(user, Event)]).
+    logger:info("Deleted user: ~p", [maps:get(user, Event)]).
     
 modify_user(Event) ->
-    logger:notice("Modifying user: ~p", [maps:get(user, Event)]),    
+    logger:info("Modifying user: ~p", [maps:get(user, Event)]),    
     CurrentUserType = em_srd:get_type(Event),
     User = maps:get(user, Event),
     Group = em_srd:get_group(User),
+    PhoneContext = em_srd:get_phonecontext(User),
 
     case CurrentUserType of
         "trunk" -> 
-            logger:notice("Modify trunk user type to user"),
+            logger:info("Modify trunk user type to user"),
             delete_user(Event),
             Event5 = maps:put(group, Group, Event),
             Event6 = maps:update(pubid, User, Event5),
             Event7 = maps:update(sprofile, User, Event6),
             Event8 = maps:put(pass, em_utils:randchar(14), Event7),
-            create_user(Event8),
-            Plan = make_plan(Event8),
-            execute_plan(Plan, Event8);  
+            Event9 = maps:put(phonecontext, PhoneContext, Event8),
+            create_user(Event9),
+            Plan = make_plan(Event9),
+            execute_plan(Plan, Event9);  
             
         "pilot" -> 
-            logger:notice("Modify pilot user type to user"),
+            logger:info("Modify pilot user type to user"),
             delete_user(Event),
             Event5 = maps:put(group, Group, Event),
             Event6 = maps:update(pubid, User, Event5),
@@ -58,10 +60,10 @@ modify_user(Event) ->
             Plan = make_plan(Event8),
             execute_plan(Plan, Event8);
             
-        "user" ->    logger:notice("Modify type is user"),
+        "user" ->    logger:info("Modify type is user"),
                      Plan1 = make_plan(Event),
                      execute_plan(Plan1, Event);
-        "virtual" -> logger:notice("Modify type is virtual"), 
+        "virtual" -> logger:info("Modify type is virtual"), 
                      Plan1 = make_plan(Event),
                      execute_plan(Plan1, Event)
     end.
@@ -74,16 +76,16 @@ modify_trunk_user(Event) ->
     
     case CurrentUserType of
         "user" -> 
-            logger:notice("Changing user type to trunk: ~p", [User]),
+            logger:info("Changing user type to trunk: ~p", [User]),
             delete_user(Event),
             Event1 = maps:put(group, Group, Event),
             create_user(Event1),
             Plan1 = make_plan(Event1),
             execute_plan(Plan1, Event1);
-        "trunk" -> logger:notice("Already user type trunk: ~p", [User]),
+        "trunk" -> logger:info("Already user type trunk: ~p", [User]),
                 Plan2 = make_plan(Event),
                 execute_plan(Plan2, Event);
-        "pilot" -> logger:notice("Already user type pilot: ~p", [User]),
+        "pilot" -> logger:info("Already user type pilot: ~p", [User]),
                 Event5 = maps:put(type, 'pilot', Event),
                 Event6 = maps:update(csprofile, serviceprofile(trunk_pilot), Event5),
                 Plan2 = make_plan(Event6),
@@ -92,34 +94,31 @@ modify_trunk_user(Event) ->
     end.   
     
 set_password(#{ user := User} = Event) ->
-    logger:notice("Updating SIP password for user: ~p", [User]),
-    {ok, C} = open_ema_session(),
-    Req = em_cai3g:set_ims_pass(Event),    
-    {ok, _} = send_to_ema(C, Req),
-    close_ema_session(C).
-    
-    
-set_phonecontext(#{ user := User, phonecontext := Context} = Event ) ->
-    CContext = em_srd:get_phonecontext(User),
+    logger:info("Set SIP password for: ~p", [User]),
+    case open_ema_session() of
+        {ok, C} -> 
+            {ok, _} = do_update_sip_password(C, Event),
+            close_ema_session(C);
+        Error -> Error
+    end. 
+                       
+set_phonecontext(#{ user := User} = Event ) ->
+    logger:info("Set phonecontext for: ~p", [User]),
     PubId = em_srd:get_sipuri(Event),
-    case Context == CContext of
-        true -> ok;
-        false -> 
-            logger:notice("Updating phone context for user: ~p", [User]),
-            Event1 = maps:put(pubid, PubId, Event),
-            em_srd:set_phonecontext(User, Context),
-            
-            {ok, C} = open_ema_session(),
-            Req = em_cai3g:set_ims_phonecontext(Event1),
-            {ok, _} = send_to_ema(C, Req),
-            close_ema_session(C)
+    Event1 = maps:put(pubid, PubId, Event),
+    
+    case open_ema_session() of
+        {ok, C} -> 
+            {ok, _} = do_update_context(C, Event1),
+            close_ema_session(C);
+        Error -> Error
     end.
     
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 make_plan(#{ user := User, pubid := PubId, phone := Phone } = Event) ->
-    logger:notice("Making plan for: ~p", [User]), 
+    logger:info("Making plan for: ~p", [User]), 
     CPubId = em_srd:get_sipuri(Event),
     CPhone = em_srd:get_e164(Event),
 
@@ -129,7 +128,7 @@ make_plan(#{ user := User, pubid := PubId, phone := Phone } = Event) ->
     {PubIdAction, PhoneAction}.
 
 execute_plan(Plan, Event) ->
-    logger:notice("Executing plan: ~p", [Plan]), 
+    logger:info("Executing plan: ~p", [Plan]), 
     case Plan of        
         {ignore, ignore} -> ok;
         {ignore, delete} -> delete_phone(Event);
@@ -156,78 +155,31 @@ execute_plan(Plan, Event) ->
         Err -> logger:error("No execution found for plan: ~p", [Err])
     end.
 
-create_ims_association(#{ phone := "NODATA", type := Type} = Event) ->
-    ok = em_srd:create_user(Event),
-    {ok, C} = open_ema_session(),
-    
-    case Type of
-        "user" ->            
-            Req = em_cai3g:add_ims_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req);
-        "virtual" ->
-            Req = em_cai3g:add_ims_virtual_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req);
-        "trunk" ->
-            Req = em_cai3g:add_ims_virtual_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req);
-        "pilot" ->
-            Req = em_cai3g:add_ims_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req)
-    end,
-    close_ema_session(C);
-    
-create_ims_association(#{ phone := nil, type := "user" } = Event) ->
-    ok = em_srd:create_user(Event),
-    {ok, C} = open_ema_session(),
-    Req = em_cai3g:add_ims_subscriber(Event),
-    {ok, _} = send_to_ema(C, Req),
-    close_ema_session(C);
-    
-    
-create_ims_association(#{ phone := nil, type := "trunk" } = Event) ->
-    ok = em_srd:create_user(Event),
-    {ok, C} = open_ema_session(),
-    Req = em_cai3g:add_ims_virtual_subscriber(Event),
-    {ok, _} = send_to_ema(C, Req),
-    close_ema_session(C);
+create_ims_association(#{ phone := "NODATA"} = Event) ->    
+    case open_ema_session() of
+        {ok, C} ->
+            {ok, _} = do_create_subscriber(C, Event),
+            close_ema_session(C);
+        Error -> Error
+    end;
 
-
-create_ims_association(#{ phone := nil, type := "pilot" } = Event) ->
-    ok = em_srd:create_user(Event),
-    {ok, C} = open_ema_session(),
-    Req = em_cai3g:add_ims_subscriber(Event),
-    {ok, _} = send_to_ema(C, Req),
-    close_ema_session(C);
-    
-     
-create_ims_association(#{ type := Type } = Event) ->
-    ok = em_srd:create_user(Event),
-    {ok, C} = open_ema_session(),
-
-    case Type of
-        "user" ->
-            Req = em_cai3g:add_ims_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req);
-                        
-        "virtual" ->
-            Req = em_cai3g:add_ims_virtual_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req);
-            
-        "trunk" ->
-            Req = em_cai3g:add_ims_virtul_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req);
-            
-        "pilot" ->
-            Req = em_cai3g:add_ims_subscriber(Event),
-            {ok, _} = send_to_ema(C, Req)
-    end,
-
-    Req1 = em_cai3g:add_ims_teluri(Event),
-    {ok, _} = send_to_ema(C, Req1),
-    Req2 = em_cai3g:add_ims_enum(Event),
-    {ok, _} = send_to_ema(C, Req2),
-
-    close_ema_session(C).
+create_ims_association(#{ phone := nil} = Event) ->    
+    case open_ema_session() of
+        {ok, C} ->
+            {ok, _} = do_create_subscriber(C, Event),
+            close_ema_session(C);
+        Error -> Error
+    end;
+         
+create_ims_association(Event) ->    
+    case open_ema_session() of
+        {ok, C} ->
+            {ok, _} = do_create_subscriber(C, Event),
+            {ok, _} = do_add_phone_hss(C, Event),
+            {ok, _} = do_add_enum(C, Event),
+            close_ema_session(C);
+        Error -> Error
+    end.
     
 % copy from service
 delete_phone(#{ user := User, association := AId } = Event) ->
@@ -342,6 +294,7 @@ update_impu_sip(#{ user := User, association := AId, pubid := undefined } = Even
 
 update_impu_sip(#{ user := User, association := AId } = Event) ->
     CPubId = em_srd:get_sipuri(Event),
+    logger:notice("CPUBID is:~p", [CPubId]),
     CPhone = em_srd:get_e164(Event),
     CContext = em_srd:get_phonecontext(User),
     
@@ -374,21 +327,111 @@ update_impu_sip(#{ user := User, association := AId } = Event) ->
             ok = create_phone(Event2)
     end.
 
+    
 delete_ims_association(Event) ->
-    CPhone = em_srd:get_e164(Event),
-    {ok, C} = open_ema_session(),    
-    case CPhone of
-        "NODATA" -> ok;
-        undefined -> ok;        
-        _ ->
-            Req1 = em_cai3g:delete_ims_enum(CPhone),
-            {ok, _} = send_to_ema(C, Req1) 
-    end,
-    ok = em_srd:delete_user(Event),
-    Req2 = em_cai3g:delete_ims_subscriber(Event),
-    {ok, _} = send_to_ema(C, Req2),
-    close_ema_session(C).  
+    case open_ema_session() of
+       {ok, C} ->
+           {ok, _} = do_delete_enum(C, Event),
+           {ok, _} = do_delete_subscriber(C, Event),
 
+           close_ema_session(C);
+        Error -> Error
+    end.    
+
+%% DO functions
+%% -------------------------------------------------------------------
+do_delete_subscriber(C, Event) ->
+    ok = em_srd:delete_user(Event),
+    Req = em_cai3g:delete_ims_subscriber(Event),
+    send_to_ema(C, Req).
+        
+%do_delete_phone_hss(C, Event) ->
+%    User = maps:get(user, Event),
+%    AssociationId = maps:get(association, Event),
+%    Phone = em_srd:get_e164(Event),
+%    
+%    case get_srd_phone(Event) of
+%        undefined -> {error, undefined};
+%        Phone ->
+%            ok = em_srd:delete_e164(User),
+%            Req = em_cai3g:delete_ims_teluri(AssociationId, Phone),
+%            send_to_ema(C, Req)
+%    end.
+
+do_delete_enum(C, Event) ->
+    case get_srd_phone(Event) of
+        undefined -> {ok, undefined};
+        Phone ->
+            Req = em_cai3g:delete_ims_enum(Phone),
+            send_to_ema(C, Req)
+    end.
+
+do_update_sip_password(C, Event) ->
+    Req = em_cai3g:set_ims_pass(Event),    
+    send_to_ema(C, Req).
+
+do_update_context(C, Event ) ->
+    User = maps:get(user, Event),
+    PhoneContext = maps:get(phonecontext, Event),
+    ok = em_srd:set_phonecontext(User, PhoneContext),
+    Req = em_cai3g:set_ims_phonecontext(Event),
+    send_to_ema(C, Req).
+    
+%do_delete_pubid(C, Event) ->
+%    AssociationId = maps:get(association, Event),
+%    CPubId = em_srd:get_sipuri(Event),
+%    Req = em_cai3g:delete_ims_pubid(AssociationId, CPubId),
+%    send_to_ema(C, Req).
+        
+%do_delete_serviceprofile(C, Event) ->
+%    AssociationId = maps:get(association, Event),
+%    CPubId = em_srd:get_sipuri(Event),
+%    Req = em_cai3g:delete_ims_serviceprofile(AssociationId, CPubId),
+%    send_to_ema(C, Req).   
+    
+%do_add_serviceprofile(C, Event) ->
+%    Req = em_cai3g:add_ims_serviceprofile(Event),
+%    send_to_ema(C, Req).    
+
+%do_add_pubid(C, Event) ->
+%    ok = em_srd:set_sipuri(Event),
+%    Req = em_cai3g:add_ims_pubid(Event),
+%    send_to_ema(C, Req).    
+    
+do_add_phone_hss(C, Event) ->
+    ok = em_srd:set_e164(Event),
+    Req = em_cai3g:add_ims_teluri(Event),
+    send_to_ema(C, Req).
+
+do_add_enum(C, Event) ->
+    Req = em_cai3g:add_ims_enum(Event),
+    send_to_ema(C, Req).
+    
+do_create_subscriber(C, #{type := "user"} = Event) ->
+    ok = em_srd:create_user(Event),
+    Req = em_cai3g:add_ims_subscriber(Event),
+    send_to_ema(C, Req);
+do_create_subscriber(C, #{type := "pilot"} = Event) ->
+    ok = em_srd:create_user(Event),
+    Req = em_cai3g:add_ims_subscriber(Event),
+    send_to_ema(C, Req);
+do_create_subscriber(C, #{type := "virtual"} = Event) ->
+    ok = em_srd:create_user(Event),
+    Req = em_cai3g:add_ims_virtual_subscriber(Event),
+    send_to_ema(C, Req);
+do_create_subscriber(C, #{type := "trunk"} = Event) ->
+    ok = em_srd:create_user(Event),
+    Req = em_cai3g:add_ims_virtual_subscriber(Event),
+    send_to_ema(C, Req).
+        
+%% GET functions
+%% -------------------------------------------------------------------
+get_srd_phone(Event) ->
+    case em_srd:get_e164(Event) of
+        "NODATA" -> undefined;
+        Phone -> Phone    
+    end.
+    
 plan_pubid_change(nil, _X, _X) ->
     ignore;
 plan_pubid_change(nil, _X, _Y) ->
@@ -429,12 +472,12 @@ open_ema_session() ->
         
 close_ema_session(C) ->
     em_ema:close(C).
-
+    
 send_to_ema(C, Req) ->
     Resp = em_ema:send(C, Req),
     case Resp of
         {ok, Payload} -> {ok, Payload};
-        {error, {4006, 13005}} -> logger:notice("Association do not exist: ~p", [Resp]),
+        {error, {4006, 13005}} -> logger:info("Association do not exist: ~p", [Resp]),
                                     {ok, "Association do not exist"};
         Other -> logger:error("EMA request error: ~p", [Other]),
             Other
