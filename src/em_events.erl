@@ -118,7 +118,7 @@ processor(Id, modify_user_vm, Message) ->
     UserName = em_utils:get_element_text(U),
     MailUser = em_utils:get_element_text(G),
     MailPass = em_utils:get_element_text(P),
-    logger:notice("Processing vmail, LOADING EVENT"), 
+    logger:notice("Processing vmail:~p", [MailUser]), 
                     
     Event = #{
         user        => UserName,
@@ -239,7 +239,8 @@ processor(Id, modify_user, Message) ->
                  isdefault   => "false",
                  irs         => "0",
                  association => em_utils:md5_hex(UserName),
-                 sprofile    => fix_nil(LP)
+                 sprofile    => fix_nil(LP),
+                 phonecontext=> "tg.gl"
              },
              em_manager_hss:modify_trunk_user(Event1)
              
