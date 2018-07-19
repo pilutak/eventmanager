@@ -294,7 +294,6 @@ update_impu_sip(#{ user := User, association := AId, pubid := undefined } = Even
 
 update_impu_sip(#{ user := User, association := AId } = Event) ->
     CPubId = em_srd:get_sipuri(Event),
-    logger:notice("CPUBID is:~p", [CPubId]),
     CPhone = em_srd:get_e164(Event),
     CContext = em_srd:get_phonecontext(User),
     
@@ -479,7 +478,7 @@ send_to_ema(C, Req) ->
         {ok, Payload} -> {ok, Payload};
         {error, {4006, 13005}} -> logger:info("Association do not exist: ~p", [Resp]),
                                     {ok, "Association do not exist"};
-        Other -> logger:error("EMA request error: ~p", [Other]),
+        Other -> logger:error("EMA request error: ~p ~p", [Other, Req]),
             Other
     end.
    
