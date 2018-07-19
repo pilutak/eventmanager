@@ -195,7 +195,7 @@ await_result(Pid,Id) ->
 
         {'EXIT', Pid, shutdown} -> 
             logger:error("Process EXIT shutdown: ~p", [Pid]),
-            ok;
+            error;
 
         {'EXIT', Pid, Reason } -> 
             logger:error("Process EXIT other: ~p, ~p", [Pid, Reason]),
@@ -203,8 +203,8 @@ await_result(Pid,Id) ->
                 ignored -> ok;
                 Id -> fail_event(Id)
             end,
-            ok
+            error
     after 8000 ->
             logger:error("Event process timeout"),
-            timeout
+            error
     end.
