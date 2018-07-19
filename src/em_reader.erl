@@ -79,10 +79,12 @@ loop(State) ->
         logger:error("Unexpected message: ~p", [Any]),
 	    loop(State)
     end.
-  
+
+% ignoring  
 process("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n", State) ->
     loop(State);
 
+% Event is handed over for processing
 process(Data, State) ->
     em_event_server:process_event(Data),
     loop(State).
