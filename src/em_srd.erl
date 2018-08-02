@@ -218,5 +218,5 @@ connect() ->
     Username = econfig:get_value(em, "srd_db", "srd_db_username"),
     Password = econfig:get_value(em, "srd_db", "srd_db_password"),
     
-    {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 4000}]),
+    {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 8000}]),
     C.
