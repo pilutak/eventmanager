@@ -28,7 +28,9 @@
     get_element_name/1,
     get_element_text/1,
     randchar/1,
-    md5_hex/1
+    md5_hex/1,
+    serviceprofile/1,
+    phonecontexts/0
     ]).
     
 %%%===================================================================
@@ -97,7 +99,34 @@ randchar(N, Acc) ->
    
 md5_hex(S) ->
     <<X:128/integer>> = crypto:hash(md5, S),
-    lists:flatten(io_lib:format("~32.16.0b", [X])).  
+    lists:flatten(io_lib:format("~32.16.0b", [X])).
+    
+serviceprofile(Id) ->
+    Profiles = econfig:get_value(em, "service_profiles"),
+    proplists:get_value(Id, Profiles).
+    
+phonecontexts() ->
+    #{
+        "Nuuk" => "nuk.tg.gl",
+        "Nanortalik" => "nan.tg.gl",
+        "Narsaq" => "nar.tg.gl",
+        "Qaqortoq" => "qaq.tg.gl",
+        "Qassiarsuk" => "qsk.tg.gl",
+        "Narsarsuaq" => "nrs.tg.gl",
+        "Igaliku" => "iga.tg.gl",
+        "Paamiut" => "paa.tg.gl",
+        "Maniitsoq" => "man.tg.gl",
+        "Kangerlussuaq" => "kan.tg.gl",
+        "Sisimiut" => "sis.tg.gl",
+        "Aasiaat" => "aas.tg.gl",
+        "Qeqertarsuaq" => "qeq.tg.gl",
+        "Ilulissat" => "ilu.tg.gl",
+        "Qasigiannguit" => "qas.tg.gl",
+        "Upernavik" => "upv.tg.gl",
+        "Uummannaq" =>"uum.tg.gl",
+        "Alaska" =>"ala.tg.gl"
+    }.        
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================

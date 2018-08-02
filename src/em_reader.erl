@@ -40,7 +40,7 @@ init(Parent) ->
 connect(State=#state{host=Host}) ->
     case gen_tcp:connect(Host, 8025, [{buffer, 65536},{active, once},{packet, line}], 10000) of
         {ok, Sock} ->
-        logger:info("Socket connected: ~p", [Host]),
+        logger:notice("EM connected to: ~p", [Host]),
 	    loop(State#state{socket=Sock});
 
         {error,timeout} ->
@@ -75,7 +75,6 @@ loop(State) ->
 	    loop(State);
     
 	Any ->
-	    %error_logger:error_msg("Unexpected message: ~w~n", [Any]),
         logger:error("Unexpected message: ~p", [Any]),
 	    loop(State)
     end.

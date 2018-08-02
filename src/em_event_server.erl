@@ -78,12 +78,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({process_event, Event}, _From, State) ->
     {UserId, CommandType, Message} = top_parser(Event),
-    Id = persist_event(maps:is_key(CommandType, em_events:processors()), UserId, CommandType, Event),
-    
-    Pid = spawn_link(em_events, process, [Id, CommandType, Message]),
-    Reply = await_result(Pid, Id),
-    
-    %Reply = em_events:process(Id, CommandType, Message),
+    Id = persist_event(UserId, CommandType, Event),    
+    Reply = em_event:process(Id, CommandType, Message),
     {reply, Reply, State};
 
 handle_call(_Request, _From, State) ->
@@ -167,44 +163,16 @@ parser_message('BroadsoftDocument', Data)->
 parser_message(_,_)->
     {ignored, ignored, undefined}.
     
-persist_event(_ ,_ ,ignored, undefined) ->
+persist_event(_ ,ignored, undefined) ->
     ignored;
-persist_event(_,_ ,ignored, _) ->
+persist_event(_ ,ignored, _) ->
     ignored;
-persist_event(true, UserId, CommandType, Data) ->
+persist_event(UserId, CommandType, Data) ->
     logger:debug("Persisting event: ~p, ~p, ~p", [UserId, CommandType, Data]),
-    em_db:insert_event(UserId, CommandType, Data);
-persist_event(false, UserId, CommandType, Data) ->
-    logger:debug("Persisting white event: ~p, ~p, ~p", [UserId, CommandType, Data]),
-    em_db:insert_white_event(UserId, CommandType, Data).
- 
-fail_event(Id) ->
-    logger:error("Event failed: ~p", [Id]),
-    em_db:fail_event(Id).
+    em_db:insert_event(UserId, CommandType, Data).
 
 fix_userid(UserId) ->
     case UserId of
         undefined -> "*XS localhost Admin*";
         _-> UserId
-    end.
-    
-await_result(Pid,Id) ->
-    receive
-        {'EXIT', Pid, normal} ->
-            ok;
-
-        {'EXIT', Pid, shutdown} -> 
-            logger:error("Process EXIT shutdown: ~p", [Pid]),
-            error;
-
-        {'EXIT', Pid, Reason } -> 
-            logger:error("Process EXIT other: ~p, ~p", [Pid, Reason]),
-            case Id of
-                ignored -> ok;
-                Id -> fail_event(Id)
-            end,
-            error
-    after 8000 ->
-            logger:error("Event process timeout"),
-            error
     end.

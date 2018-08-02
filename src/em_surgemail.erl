@@ -1,156 +1,129 @@
-%%% Copyright 2017 <thomas.elsgaard@timezone4.com>
-%%%
-%%% Licensed under the Apache License, Version 2.0 (the "License");
-%%% you may not use this file except in compliance with the License.
-%%% You may obtain a copy of the License at
-%%%
-%%%   http://www.apache.org/licenses/LICENSE-2.0
-%%%
-%%% Unless required by applicable law or agreed to in writing, software
-%%% distributed under the License is distributed on an "AS IS" BASIS,
-%%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%%% See the License for the specific language governing permissions and
-%%% limitations under the License.
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%   http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
 
 -module(em_surgemail).
--behaviour(gen_server).
 -include("../include/em.hrl").
 
 %% API
--export([start_link/0]).
--export([request/1]).
+-export([create_domain/1]).
+-export([delete_domain/1]).
+-export([create_account/2]).
+-export([delete_account/1]).
+-export([modify/1]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
-
--define(SERVER, ?MODULE).
-
--record(state, {}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+create_domain(Domain) ->
+    Username = econfig:get_value(em, "surgemail", "username"),
+    Password = econfig:get_value(em, "surgemail", "password"),
 
-request(Request) ->
-    gen_server:call(?SERVER, {send_request, Request}).
+    Param1 = "/cgi/admin.cgi?show=simple_msg.xml&",
+    Param2 = "cmd=global_misc_save&",
+    Param3 = "misc_settings=domain_name,manager_username,manager_password,create_user,create_max&",
+    Param4 = "misc_cmd=special&",
+    Param5 = "domainid=-1&",
+    Param6 = "name=" ++ Domain ++ "&",
+    Param7 = "manager_username=" ++ Username ++ "&",
+    Param8 = "manager_password=" ++ Password ++ "" ,
     
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7 ++ Param8,     
+    send(Request).
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
+delete_domain(Domain) ->
+    Param1 = "/cgi/admin.cgi?show=simple_msg.xml&",
+    Param2 = "cmd=domain_delete&",
+    Param3 = "domain=" ++ Domain ++ "&",
+    Param4 = "delete_users=true&",
+    Param5 = "delete_files=true",
+    
+    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5,     
+    send(Request).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init([]) ->
-    process_flag(trap_exit, true),
-    econfig:register_config(em, ["/etc/em/em.ini"], [autoreload]),
-    {ok, #state{}}.
+create_account(MailUser, MailPass) ->
+    DomainPass = econfig:get_value(em, "surgemail", "domain_password"),
+    [UserPart, DomainPart] = string:split(MailUser, "@"), 
+    
+    Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
+    Param2 = "cmd=cmd_user_login&",
+    Param3 = "lcmd=user_create&",
+    Param4 = "user_fields=user_id&",
+    Param5 = "username=" ++ "admin@" ++ DomainPart ++ "&",
+    Param6 = "password=" ++ DomainPass ++ "&",
+    Param7 = "lusername=" ++ UserPart ++ "&",
+    Param8 = "lpassword=" ++ MailPass ++ "",
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call({send_request, Request}, _From, State) ->
-    {ok, _} = send(Request),
-    {reply, ok, State};
-        
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7 ++ Param8, 
+    send(Request).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
+delete_account(#{ user := User }) ->
+    case em_srd:get_vmail_user(User) of
+        undefined -> ok;
+        "NODATA" -> ok;
+        MailUser -> do_delete_account(User, MailUser)
+    end.
+    
+    
+modify(Event) ->
+    User = maps:get(user, Event),
+    MailUser = maps:get(mailuser, Event),
+    MailPass = maps:get(mailpass, Event),
+    CurrentMailUser = maps:get(current_mailuser, Event),
+    
+    case {MailUser, MailPass, CurrentMailUser} of
+        {undefined, undefined, _} -> 
+            logger:debug("Ignoring (mailuser do not exist)"), 
+            ok;
+            
+        {X, _, X} -> 
+            logger:debug("Ignoring (mailuser already set)"), 
+            ok;
+            
+        {_, _, undefined} -> 
+            logger:debug("creating vmail accpount: ~s", [MailUser]),
+            em_srd:set_vmail(User, MailUser, MailPass),
+            create_account(MailUser, MailPass)
+    end.
+    
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-  
+do_delete_account(User, MailUser) ->
+    logger:notice("Deleting surgemail account: ~s", [MailUser]), 
+    DomainPass = econfig:get_value(em, "surgemail", "domain_password"),
+    [UserPart, DomainPart] = string:split(MailUser, "@"), 
+    
+    Param1 = "/cgi/domadmin.cgi?show=simple_msg.xml&",
+    Param2 = "cmd=cmd_user_login&",
+    Param3 = "lcmd=user_delete&",
+    Param4 = "user_fields=user_id&",
+    Param5 = "username=" ++ "admin@" ++ DomainPart ++ "&",
+    Param6 = "password=" ++ DomainPass ++ "&",
+    Param7 = "lusername=" ++ UserPart ++ "&",
+
+    Request = Param1 ++ Param2 ++ Param3 ++ Param4 ++ Param5 ++ Param6 ++ Param7,
+    send(Request),
+    em_srd:delete_vmail(User).
+     
 send(Request) ->
-    logger:notice("Sending request to primary Surgemail"), 
+    logger:debug("Sending request to primary Surgemail"), 
     Hostname = econfig:get_value(em, "surgemail", "primary_host"),
     Port = econfig:get_value(em, "surgemail", "port"),
     Username = econfig:get_value(em, "surgemail", "username"),
     Password = econfig:get_value(em, "surgemail", "password"),
     
     Url = "http://" ++ Hostname ++ ":" ++ Port ++ Request, 
-    %?INFO_MSG("Surgemail URL: ~p~n", [Url]), 
 
     ContentType = "text/html",
     Headers = [auth_header(Username, Password), {"Content-Type", ContentType}],
@@ -159,14 +132,14 @@ send(Request) ->
             {ok,{{_,_OtherStatus,_},_Headers,_Body}} ->
                 exit(http_code_unexpected);
             {error, {failed_connect, _Error}} ->
-                logger:notice("Connect failed towards primary surgemail: ~s", [Hostname]),
+                logger:error("Connect failed towards primary surgemail: ~s", [Hostname]),
                 send_secondary(Request);
             {error, Reason} ->
                 exit(Reason)
     end. 
 
 send_secondary(Request) ->
-    logger:notice("Sending request to secondary Surgemail"), 
+    logger:debug("Sending request to secondary Surgemail"), 
     Hostname = econfig:get_value(em, "surgemail", "secondary_host"),
     Port = econfig:get_value(em, "surgemail", "port"),
     Username = econfig:get_value(em, "surgemail", "username"),
@@ -191,6 +164,12 @@ send_secondary(Request) ->
 auth_header(Username, Password) ->
     Encoded = base64:encode_to_string(lists:append([Username,":",Password])),
     {"Authorization","Basic " ++ Encoded}.
- 
 
-
+   
+%%%===================================================================
+%%% Unit Tests
+%%%===================================================================
+%-ifdef(TEST).
+%-include_lib("eunit/include/eunit.hrl").
+%-endif.       
+   

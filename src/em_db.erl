@@ -124,7 +124,7 @@ connect() ->
     Username = econfig:get_value(em, "em_db", "em_db_username"),
     Password = econfig:get_value(em, "em_db", "em_db_password"),
 
-    {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 4000}]),
+    {ok, C} = epgsql:connect(Hostname, Username, Password, [{database, Database},{timeout, 8000}]),
     C.
 
 events_to_json({Id, User, Command, Status, Inserted}) ->
