@@ -191,7 +191,7 @@ delete_ims_association(C, User, Attrs) ->
     
 modify_ims_association(C, User, Attrs) ->
     case em_srd:user_exists(User) of
-        false -> ok;
+        false -> error;
         true ->
             plan_type(C, User, Attrs),
             plan_pubid(C, User, Attrs),
