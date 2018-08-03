@@ -162,7 +162,8 @@
      modify_user_pubid_to_trunkuser,
      modify_trunkuser_pubid,
      modify_trunkuser_phone,
-     modify_trunkuser_to_user
+     modify_trunkuser_to_user,
+     modify_nonexisting_user
      ].   
      
  %%--------------------------------------------------------------------
@@ -264,7 +265,9 @@ modify_trunkuser_pubid() ->
 modify_trunkuser_phone() ->
     [].
 modify_trunkuser_to_user() ->
-    [].    
+    [].  
+modify_nonexisting_user() ->
+    []. 
  %%--------------------------------------------------------------------
  %% Function: TestCase(Config0) ->
  %%               ok | exit() | {skip,Reason} | {comment,Comment} |
@@ -671,6 +674,10 @@ modify_trunkuser_to_user(Config) ->
     ok = em_event_server:process_event(set_trunkuser(User, Phone1, User)),
     ok = em_event_server:process_event(trunkuser_to_user(User, Phone1, User)).
 
+modify_nonexisting_user(Config) ->
+    User = 'moduser011@lab24.timezone4.com',
+    Phone1 = ?config(phone1, Config),
+    error = em_event_server:process_event(set_set(User, Phone1, User)).    
     
 add(SP, Grp, User) ->
     io_lib:format("<BroadsoftOCIReportingDocument protocol=\"OCIReporting\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">
