@@ -190,11 +190,14 @@ delete_ims_association(C, User, Attrs) ->
     delete_user(C, User, Attrs).
     
 modify_ims_association(C, User, Attrs) ->
-    plan_type(C, User, Attrs),
-    plan_pubid(C, User, Attrs),
-    plan_phone(C, User, Attrs),
-    plan_phonecontext(C, User, Attrs),
-    ok.
+    case em_srd:user_exists(User) of
+        false -> ok;
+        true ->
+            plan_type(C, User, Attrs),
+            plan_pubid(C, User, Attrs),
+            plan_phone(C, User, Attrs),
+            plan_phonecontext(C, User, Attrs),
+            ok.
 
 set_sip_password(C, User, Attrs) ->
     Password = maps:get(pass, Attrs),
