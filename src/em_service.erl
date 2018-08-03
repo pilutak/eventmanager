@@ -37,7 +37,7 @@ create(Id, Message) ->
         group       => get_group(Message),
         type        => "virtual"
     },
-    ok = process(create_ims_association, Id, get_user(Message), Attrs).
+    process(create_ims_association, Id, get_user(Message), Attrs).
 
 modify(Id, Message) ->
     User = get_user(Message),
@@ -46,11 +46,11 @@ modify(Id, Message) ->
         phone       => get_phone(Message),
         type        => "virtual"
     },
-    ok = process(modify_ims_association, Id, User, Attrs).
+    process(modify_ims_association, Id, User, Attrs).
 
 delete(Id, Message) ->
     Attrs = #{},
-    ok = process(delete_ims_association, Id, get_user(Message), Attrs).
+    process(delete_ims_association, Id, get_user(Message), Attrs).
 
 %%%===================================================================
 %%% Internal functions

@@ -52,7 +52,7 @@ create(Id, Message) ->
         type => "user",
         phonecontext => get_phonecontext(Message)
     },
-    ok = process(create_ims_association, Id, User, Attrs).
+    process(create_ims_association, Id, User, Attrs).
 
 modify(Id, Message) ->
     User = get_user(Message),
@@ -66,7 +66,7 @@ modify(Id, Message) ->
                 irs   => "1",
                 phonecontext => get_phonecontext(Message)
             },
-            ok = process(modify_ims_association, Id, User, Attrs);
+            process(modify_ims_association, Id, User, Attrs);
             
         {access, PubId} ->
             logger:debug("Modify user, access endpoint"),
@@ -77,7 +77,7 @@ modify(Id, Message) ->
                 irs   => "1",
                 phonecontext => get_phonecontext(Message)
             },
-            ok = process(modify_ims_association, Id, User, Attrs);
+            process(modify_ims_association, Id, User, Attrs);
                  
         {trunk, PubId} ->
             logger:debug("Modify user, trunk endpoint"),
@@ -88,13 +88,13 @@ modify(Id, Message) ->
                 irs   => "0",
                 phonecontext => get_phonecontext(Message)
             },
-            ok = process(modify_ims_association, Id, User, Attrs)
+            process(modify_ims_association, Id, User, Attrs)
     end. 
 
 delete(Id, Message) ->
     User = get_user(Message), 
     Attrs = #{},  
-    ok = process(delete_ims_association, Id, User, Attrs).
+    process(delete_ims_association, Id, User, Attrs).
     
 delete_group(Id, Message) ->
     GroupId = get_group(Message),
@@ -107,7 +107,7 @@ delete_group(Id, Message) ->
             fun(I) ->
                 {I1} = I,
                 I2 = binary_to_list(I1),
-                ok = process(delete_ims_association, Id, I2, #{})
+                process(delete_ims_association, Id, I2, #{})
             end, Users)
     end.        
     
@@ -134,7 +134,7 @@ create_trunk(Id, Message) ->
         phonecontext=> "tg.gl"
     },    
     %em_processor_trunk:create_user(Event);
-    ok = process(create_ims_association, Id, User, Attrs).
+    process(create_ims_association, Id, User, Attrs).
 
 set_password(Id, Message) ->
     logger:debug("Setting SIP password"),
@@ -147,7 +147,7 @@ set_password(Id, Message) ->
     Attrs = #{
         pass => Pass
     },
-    ok = process(set_sip_password, Id, User, Attrs).
+    process(set_sip_password, Id, User, Attrs).
 
 
 modify_voiceportal(Id, Message) ->
@@ -165,7 +165,7 @@ modify_voiceportal(Id, Message) ->
         phonecontext=> "tg.gl" 
     },
     
-    ok = process(modify_vp, Id, User, Attrs).
+    process(modify_vp, Id, User, Attrs).
     
     
 %%%===================================================================
@@ -191,13 +191,14 @@ delete_ims_association(C, User, Attrs) ->
     
 modify_ims_association(C, User, Attrs) ->
     case em_srd:user_exists(User) of
-        false -> error;
+        false -> exit(non_existing_user);
         true ->
             plan_type(C, User, Attrs),
             plan_pubid(C, User, Attrs),
             plan_phone(C, User, Attrs),
             plan_phonecontext(C, User, Attrs),
-            ok.
+            ok
+    end.
 
 set_sip_password(C, User, Attrs) ->
     Password = maps:get(pass, Attrs),

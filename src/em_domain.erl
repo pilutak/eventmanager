@@ -36,14 +36,14 @@ create(Id, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
-    ok = process(create_domain, Id, Domain).
+    process(create_domain, Id, Domain).
 
 
 delete(Id, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [D] = em_utils:get_elements(domain, InsideCommand),
     Domain = em_utils:get_element_text(D),
-    ok = process(delete_domain, Id, Domain).
+    process(delete_domain, Id, Domain).
 
 %%%===================================================================
 %%% Internal functions
