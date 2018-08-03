@@ -50,7 +50,7 @@ modify(Id, Message) ->
         current_mailuser   => em_srd:get_vmail_user(User),
         current_mailpass   => em_srd:get_vmail_pass(User)
     },
-    ok = process(modify_vm, Id, User, Attrs).
+    process(modify_vm, Id, User, Attrs).
     
 %%%===================================================================
 %%% Internal functions
