@@ -55,7 +55,7 @@ set_serviceprofile(User, Attrs) ->
     PubId = maps:get(pubid, Attrs, User),   
     ServiceProfileId = maps:get(sprofile, Attrs, PubId),
     Type = maps:get(type, Attrs),    
-    ConfiguredServiceProfileId = maps:get(csprofile, Attrs, Type),
+    ConfiguredServiceProfileId = maps:get(csprofile, Attrs, em_utils:serviceprofile(Type)),
     PhoneContext = maps:get(phonecontext, Attrs, "tg.gl"),    
     
     {'cai3:Set', [{'xmlns:hss', Ns1}], [
