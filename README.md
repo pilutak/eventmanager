@@ -58,8 +58,8 @@ host=
 [service_profiles]
 virtual=
 user=
-trunk_pilot=
-trunk_ddi=
+pilot=
+trunk=
 
 ```
 
