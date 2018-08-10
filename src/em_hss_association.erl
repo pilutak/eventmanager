@@ -173,6 +173,7 @@ delete_association(User) ->
             {'hss:associationId', [], [MoId]}]}]}.
 
 send(C, Req) ->
+    logger:debug("EMA Req: ~p",[Req]),
     Resp = em_ema:send(C, Req),
     case Resp of
         {ok, Payload} -> {ok, Payload};
