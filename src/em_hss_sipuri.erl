@@ -25,13 +25,13 @@
 %%%===================================================================
 
 create(User, Attrs, C) ->
-    logger:notice("adding pubid for user ~p", [User]),
+    logger:debug("adding pubid for user ~p", [User]),
     Req = set_sipuri(User, Attrs),
     {Result, _} = send(C, Req),
     Result.
    
 delete(User, PubId, C) ->
-    logger:notice("deleting sipuri for user ~p", [User]),    
+    logger:debug("deleting sipuri for user ~p", [User]),    
     Req = delete_sipuri(User, PubId),
     {Result, _} = send(C, Req),
     Result.

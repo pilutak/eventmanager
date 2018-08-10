@@ -84,8 +84,11 @@ plan_pubid(C, User, Attrs) ->
     CPubId = em_srd:get_sipuri(User),      
     Plan = plan_pubid_change(PubId, CPubId),
     case Plan of
-        ignore -> ok;
-        update -> update_pubid(C, User, Attrs)
+        ignore -> 
+            logger:debug("No pubId plan found ~p", [User]),
+            ok;
+        update -> 
+            update_pubid(C, User, Attrs)
     end.
 
 update_pubid(C, User, Attrs) ->
@@ -122,7 +125,9 @@ plan_phone(C, User, Attrs) ->
     Plan = plan_phone_change(Phone, CPhone),
     
     case Plan of
-        ignore -> ok;
+        ignore ->
+            logger:debug("No phone plan found ~p", [User]),
+            ok;
         delete -> delete_phone(C, User, Attrs);
         update -> update_phone(C, User, Attrs)
     end.

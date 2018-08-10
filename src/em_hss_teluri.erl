@@ -25,13 +25,13 @@
 %%%===================================================================
 
 create(User, Attrs, C) ->
-    logger:notice("adding phone for user ~p", [User]),
+    logger:debug("adding phone for user ~p", [User]),
     Req = set_teluri(User, Attrs),
     {Result, _} = send(C, Req),
     Result.
    
 delete(User, Phone, C) ->
-    logger:notice("deleting teluri for user ~p", [User]),    
+    logger:debug("deleting teluri for user ~p", [User]),    
     Req = delete_teluri(User, Phone),
     {Result, _} = send(C, Req),
     Result.

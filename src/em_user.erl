@@ -223,7 +223,9 @@ plan_type(C, User, Attrs) ->
 
     Plan = plan_type_change(Type, CurrentType),
     case Plan of
-        ignore -> ok;
+        ignore ->
+            logger:debug("No type plan found ~p", [User]),
+            ok;
         update -> change_usertype(C, User, Attrs, Type)
     end.
 
@@ -233,7 +235,9 @@ plan_phonecontext(C, User, Attrs) ->
     Plan = plan_phonecontext_change(PhoneContext, CurrentPhoneContext),
     logger:debug("Phonecontext plan for user ~p is ~p", [User, Plan]),
     case Plan of
-        ignore -> ok;
+        ignore ->
+            logger:debug("No phonecontext plan found ~p", [User]),
+            ok;
         update -> update_phonecontext(C, User, Attrs)
     end.
 
@@ -242,7 +246,9 @@ plan_pubid(C, User, Attrs) ->
     CPubId = em_srd:get_sipuri(User),      
     Plan = plan_pubid_change(PubId, CPubId),
     case Plan of
-        ignore -> ok;
+        ignore ->
+            logger:debug("No pubId plan found ~p", [User]),
+            ok;
         update -> update_pubid(C, User, Attrs)
     end.
     
@@ -252,7 +258,9 @@ plan_phone(C, User, Attrs) ->
     Plan = plan_phone_change(Phone, CPhone),
     
     case Plan of
-        ignore -> ok;
+        ignore ->
+            logger:debug("No phone plan found ~p", [User]),
+            ok;
         delete -> delete_phone(C, User, Attrs);
         update -> update_phone(C, User, Attrs)
     end.

@@ -26,19 +26,19 @@
 %%%===================================================================
 
 create(User, Attrs, C) ->
-    logger:notice("adding serviceprofile for user ~p", [User]),
+    logger:debug("adding serviceprofile for user ~p", [User]),
     Req = set_serviceprofile(User, Attrs),
     {Result, _} = send(C, Req),
     Result.
    
 delete(User, ServiceProfileId, C) ->
-    logger:notice("deleting serviceprofile ~p", [ServiceProfileId]),    
+    logger:debug("deleting serviceprofile ~p", [ServiceProfileId]),    
     Req = delete_serviceprofile(User, ServiceProfileId),
     {Result, _} = send(C, Req),
     Result.
 
 phonecontext(User, Attrs, C) ->
-    logger:notice("Updating phonecontext for user ~p", [User]),    
+    logger:debug("Updating phonecontext for user ~p", [User]),    
     Req = set_phonecontext(User, Attrs),
     {Result, _} = send(C, Req),
     Result.
