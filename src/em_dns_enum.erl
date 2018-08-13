@@ -25,13 +25,13 @@
 %%%===================================================================
 
 create(User, Attrs, C) ->
-    logger:notice("Creating ENUM for user ~p", [User]),
+    logger:debug("Creating ENUM for user ~p", [User]),
     Req = create_enum(User, Attrs),
     {Result, _} = send(C, Req),
     Result.
    
 delete(User, Phone, C) ->
-    logger:notice("Deleting ENUM for user ~p", [User]),    
+    logger:debug("Deleting ENUM for user ~p", [User]),    
     Req = delete_enum(User, Phone),
     {Result, _} = send(C, Req),
     Result.
@@ -76,6 +76,7 @@ delete_enum(_User, Phone) ->
             ]}]}.
     
 send(C, Req) ->
+    logger:debug("EMA Req: ~p",[Req]),
     Resp = em_ema:send(C, Req),
     case Resp of
         {ok, Payload} -> {ok, Payload};
