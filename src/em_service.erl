@@ -46,8 +46,12 @@ modify(Id, Message) ->
         phone       => get_phone(Message),
         type        => "virtual"
     },
-    process(modify_ims_association, Id, User, Attrs).
-
+    
+    case get_event_modify_type(Message) of
+        profile -> em_db:set_white_event(Id);
+        address -> process(modify_ims_association, Id, User, Attrs)
+    end.
+    
 delete(Id, Message) ->
     Attrs = #{},
     process(delete_ims_association, Id, get_user(Message), Attrs).
@@ -117,6 +121,17 @@ update_pubid(C, User, Attrs) ->
             ok = em_dns_enum:create(User, UpdatedAttrs, C),
             ok = em_srd:set_phone(User, UpdatedAttrs)
     end.    
+
+
+get_event_modify_type(Message) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
+    [Name] = em_utils:get_elements(name, em_utils:get_element_childs(ServiceInstanceProfile)),
+    case em_utils:get_element_text(Name) of
+        undefined -> address;
+        _ -> profile
+    end.
+
 
 %% ----- Handling of PHONE          
 plan_phone(C, User, Attrs) ->
