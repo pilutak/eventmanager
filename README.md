@@ -61,6 +61,9 @@ user=
 pilot=
 trunk=
 
+[em]
+loglevel=notice
+
 ```
 
 # System Architecture
