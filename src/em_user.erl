@@ -333,7 +333,10 @@ delete_voicemail(_C, User, _Attrs) ->
 
 delete_user(C, User, Attrs) ->
     ok = em_srd:delete_user(User, Attrs),
-    ok = em_hss_association:delete(User, C).    
+    case em_hss_association:delete(User, C) of
+        ok -> ok;
+        error -> ok
+    end.
     
 change_usertype(C, User, Attrs, UserType) ->
     CurrentPubId = em_srd:get_sipuri(User),

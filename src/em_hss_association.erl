@@ -177,8 +177,6 @@ send(C, Req) ->
     Resp = em_ema:send(C, Req),
     case Resp of
         {ok, Payload} -> {ok, Payload};
-        {error, {4006, 13005}} -> logger:debug("Association do not exist: ~p", [Resp]),
-                                  {ok, "Association do not exist"};
         Other -> logger:error("EMA request error: ~p ~p", [Other, Req]),
             Other
     end.

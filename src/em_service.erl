@@ -72,10 +72,9 @@ create_ims_association(C, User, Attrs) ->
     ok = em_srd:create_user(User, Attrs),
     ok = em_hss_association:create(User, Attrs, C).
     
-delete_ims_association(C, User, _Attrs) ->
+delete_ims_association(C, User, Attrs) ->
     delete_phone(C, User, #{}),
-    em_srd:delete_user(User, #{}),
-    ok = em_hss_association:delete(User, C).    
+    delete_user(C, User, Attrs).
 
 modify_ims_association(C, User, Attrs) ->
     plan_pubid(C, User, Attrs),
@@ -172,6 +171,14 @@ delete_phone(C, User, _Attrs) ->
             ok = em_hss_teluri:delete(User, CurrentPhone, C),
             ok = em_dns_enum:delete(User, CurrentPhone, C)
     end.
+
+delete_user(C, User, Attrs) ->
+    ok = em_srd:delete_user(User, Attrs),
+    case em_hss_association:delete(User, C) of
+        ok -> ok;
+        error -> ok
+    end.
+
 
 get_user(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
