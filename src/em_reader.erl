@@ -34,6 +34,9 @@ init(Parent) ->
     process_flag(trap_exit, true),
     ok = proc_lib:init_ack(Parent, {ok, self()}),
     econfig:register_config(em, ["/etc/em/em.ini"], [autoreload]),
+    LogLevel = econfig:get_value(em, "em", "loglevel"),
+    logger:notice("Loglevel is: ~p", [LogLevel]),
+    logger:set_primary_config(level, list_to_atom(LogLevel)),
     Host = econfig:get_value(em, "broadworks", "host"),
     connect(#state{socket = undefined, host = Host}).
 
