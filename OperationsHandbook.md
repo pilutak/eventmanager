@@ -45,6 +45,34 @@ loglevel=notice
 After updating the loglevel, EM must be restartet in order to activate,
 Default loglevel is notice, for debugging use: debug
 
+
+## Event Monitor:
+The Event Monitor is a small java UI application which monitors the events. Event processing is classified into following catagories:
+
+Green   (Successfull)
+Yellow  (Pending)
+Red     (Failed)
+Grey    (Ignored) 
+
+Green:  The event has been analyzed by EM, and processing was successfull. In most cases there will have been sent commands southbound to the network.
+Yellow: The event is currently being processed. If an event stays in status pending, something is wrong.
+Red:    The event processing has failed! This request should be handled manually.
+Grey:   The event is ignored by EM (most likely because the event is not implemented). During normal operations, grey events are NOT shown in the Event Monitor!
+
+
+## Scheduled operations tasks:
+Daily: Look in the event monitor if any events has failed the last 24 hours.
+Weekly: Look in the EM logfile if there is logged any error messages or crashes (on both EM nodes).
+Monthly: Verify diskspace on application and DB servers, if needed, clean events from DB. Verify DB backups (make sure to have SRD backup). check health of both DB servers.
+
+## Resolving Errors:
+An event has been marked as failed in event monitor: Investigate why it failed, and resolve. In data is fixed manually in the core, the SRD data must be updated accordingly! 
+
+EM does not receive any events from Broadworks: Restart EM, events has been queued in Broadworks, and should be processed when EM is restarted. Verify that EM is processing events.
+
+Primary DB is DOWN: Update the IP / hostname of the DB server in the EM config file, restart EM. Resolve lost events manually!!
+
+
 ## License
 
 Copyright 2018 Thomas Elsgaard
