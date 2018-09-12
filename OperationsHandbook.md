@@ -49,14 +49,17 @@ Default loglevel is notice, for debugging use: debug
 ## Event Monitor:
 The Event Monitor is a small java UI application which monitors the events. Event processing is classified into following catagories:
 
-Green   (Successfull)
-Yellow  (Pending)
-Red     (Failed)
-Grey    (Ignored) 
+- Green   (Successfull)
+- Yellow  (Pending)
+- Red     (Failed)
+- Grey    (Ignored) 
 
 Green:  The event has been analyzed by EM, and processing was successfull. In most cases there will have been sent commands southbound to the network.
+
 Yellow: The event is currently being processed. If an event stays in status pending, something is wrong.
+
 Red:    The event processing has failed! This request should be handled manually.
+
 Grey:   The event is ignored by EM (most likely because the event is not implemented). During normal operations, grey events are NOT shown in the Event Monitor!
 
 
