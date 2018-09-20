@@ -65,7 +65,9 @@ Grey:   The event is ignored by EM (most likely because the event is not impleme
 
 ## Scheduled operations tasks:
 Daily: Look in the event monitor if any events has failed the last 24 hours.
+
 Weekly: Look in the EM logfile if there is logged any error messages or crashes (on both EM nodes).
+
 Monthly: Verify diskspace on application and DB servers, if needed, clean events from DB. Verify DB backups (make sure to have SRD backup). check health of both DB servers.
 
 ## Resolving Errors:
