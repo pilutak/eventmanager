@@ -4,18 +4,15 @@
 A Broadworks OCI-R Client application that keep connections to one or more Broadsoft Broadworks application servers
 , handles recieves OCI-R events, and provisions the Ericsson IMS core (HSS-FE and ENUM-FE).
 
-This is work in progress. I need to write documentation before it us
-usable, but as such the eventmanager should support provisioning of:
-
+The EMA handles following Broadworks  data objects
+ 
   - Users
   - Huntgroups
   - Auto attendants
-  - Call centers
+  - Call centers (standard)
   - Meet-Me conferences
   - Voiceportals
   - Voicemails
-
-I would love to get some feedback and help building this thing.
 
 ## Installation:
 The eventmanager runs as a release
@@ -74,31 +71,21 @@ The reader module extracts the commandtypem and performs a lookup to find a matc
 
 A new process is spawned, and the event is processed by the events module. Based on the commandtype, following processors can be called:
 
-- create_service
-- modify_service
-- delete_service
-- create_user
-- modify_user
-- delete_user
-- set_password
-- create_trunk
-- modify_group_vp
-- modify_user_vm
-- delete_group
-- create_domain
-- delete_domain
+- em_domain
+- em_user
+- em_service
+- em_voicemail
 
-The events module extracts parameters from the event needed in order to apply business logic, and inserts the parameters into an event record, which depending on the processor type, is processed by an em_manager_* module:
+The event module extracts parameters from the event needed in order to apply business logic, and inserts the parameters into an event record, which depending on the processor type, is processed by an processor module
 
-- em_manager_hss
-- em_manager_surgemail
-
-Manager modules are reposinble for applying the event specific business logic. After applying business logic, the EM might send one or multiple request to the EMA/PG or surgemail nodes. If the event prcessing is successfull, the event status in the EM DB is updated to either: completed or failed.
+Processor modules are reposinble for applying the event specific business logic. After applying business logic, the EM might send one or multiple request to the EMA/PG or surgemail nodes. If the event prcessing is successfull, the event status in the EM DB is updated to either: completed or failed.
 
 # Status
 EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Ericcson layered architecture.
 
 # Tests
+
+Mosts test is integration tests via CT
 
 ## License
 
