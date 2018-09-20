@@ -185,7 +185,7 @@ The event module extracts parameters from the event needed in order to apply bus
 Processor modules are reposinble for applying the event specific business logic. After applying business logic, the EM might send one or multiple request to the EMA/PG or surgemail nodes. If the event prcessing is successfull, the event status in the EM DB is updated to either: completed or failed.
 
 # Status
-EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Ericcson layered architecture.
+EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Ericsson layered architecture.
 
 # Tests
 
