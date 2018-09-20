@@ -126,6 +126,16 @@ loglevel=notice
 After updating the loglevel, EM must be restartet in order to activate,
 Default loglevel is notice, for debugging use: debug
 
+
+##Monitoring
+The EM instances can be monitored via the alivecheck:
+
+```
+curl http://{EM hostname / IP}:8080/alivecheck
+```
+
+Whihc returns 200 OK and: {"is_alive":true}
+
 ## Event Monitor:
 The Event Monitor is a small java UI application which monitors the events. Event processing is classified into following catagories:
 
