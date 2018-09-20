@@ -127,7 +127,7 @@ After updating the loglevel, EM must be restartet in order to activate,
 Default loglevel is notice, for debugging use: debug
 
 
-##Monitoring:
+## Monitoring:
 The EM instances can be monitored via the alivecheck:
 
 ```
