@@ -74,6 +74,27 @@ loglevel=notice
 
 ```
 ## Stop / Start:
+Systemdd config
+```
+[Unit]
+After=network.target remote-fs.target
+Requires=network.target remote-fs.target
+
+[Service]
+Type=simple
+TimeoutStartSec=0
+Restart=always
+RestartSec=5
+Environment=HOME=/opt/em
+ExecStart=/opt/em/bin/em foreground
+ExecStop=/opt/em/bin/em stop
+
+[Install]
+WantedBy=multi-user.target
+
+````
+
+Then EM can be stopped / started as:
 ```
 systemctl stop em.service
 systemctl start em.service
