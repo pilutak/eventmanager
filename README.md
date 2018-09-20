@@ -191,6 +191,18 @@ EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Eri
 
 Mosts test is integration tests via CT
 
+Running all tests:
+
+```
+make ct
+````
+
+Run specific test:
+
+```
+make ct-groupAutoAttendantModifyInstanceRequest20
+```
+
 ## License
 
 Copyright 2018 Thomas Elsgaard
