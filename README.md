@@ -184,6 +184,50 @@ The event module extracts parameters from the event needed in order to apply bus
 
 Processor modules are reposinble for applying the event specific business logic. After applying business logic, the EM might send one or multiple request to the EMA/PG or surgemail nodes. If the event prcessing is successfull, the event status in the EM DB is updated to either: completed or failed.
 
+
+# Processing Logic
+
+em_domain:
+    Following OCI-R commands is calling the domain processor:
+
+    SystemDomainAddRequest -> Creating domain in surgemail
+    SystemDomainDeleteRequest -> Deleting domain in surgemail
+
+
+em_user:
+    Following OCI-R commands is calling the user processor:
+    
+    UserAddRequest17sp4 -> Add user in SRD, HSS
+    UserModifyRequest17sp4 -> Modify user in SRD. ENUM, HSS
+    UserDeleteRequest -> Delete user from SRD, ENUM, HSS
+    UserAuthenticationModifyRequest -> Update SIP password in HSS
+    GroupTrunkGroupAddInstanceRequest21 -> Add user as pilot user in SRD and HSS
+    GroupDeleteRequest -> List all users from SRD (belonging to BW group), and delete from SRD, ENUM, HSS, SURGEMAIL
+    GroupVoiceMessagingGroupModifyVoicePortalRequest -> Create virtual user in SRD, HSS, ENUM
+
+
+em_service:
+    Following OCI-R commands is calling the service processor:
+    
+    GroupAutoAttendantAddInstanceRequest20 -> Add user in SRD, HSS
+    GroupAutoAttendantModifyInstanceRequest20 -> Modify user in SRD. ENUM, HSS
+    GroupAutoAttendantDeleteInstanceRequest -> Delete user from SRD, ENUM, HSS
+    GroupHuntGroupAddInstanceRequest20 -> Add user in SRD, HSS
+    GroupHuntGroupModifyInstanceRequest -> Modify user in SRD. ENUM, HSS
+    GroupHuntGroupDeleteInstanceRequest -> Delete user from SRD, ENUM, HSS
+    GroupCallCenterAddInstanceRequest19 -> Add user in SRD, HSS
+    GroupCallCenterModifyInstanceRequest19 -> Modify user in SRD. ENUM, HSS
+    GroupCallCenterDeleteInstanceRequest -> Delete user from SRD, ENUM, HSS
+    GroupMeetMeConferencingAddInstanceRequest19 -> Add user in SRD, HSS
+    GroupMeetMeConferencingModifyInstanceRequest -> Modify user in SRD. ENUM, HSS
+    GroupMeetMeConferencingDeleteInstanceRequest -> Delete user from SRD, ENUM, HSS
+    
+
+em_service:
+    Following OCI-R commands is calling the vocemail processor:
+    
+    UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest -> Modify user in SRD and surgemail (create, modify, delete) 
+    
 # Status
 EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Ericsson layered architecture.
 
