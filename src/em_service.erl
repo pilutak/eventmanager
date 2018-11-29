@@ -125,11 +125,6 @@ update_pubid(C, User, Attrs) ->
 get_event_modify_type(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
-    %[Name] = em_utils:get_elements(name, em_utils:get_element_childs(ServiceInstanceProfile)),
-    %case em_utils:get_element_text(Name) of
-    %    undefined -> address;
-    %    _ -> profile
-
     [PublicUserIdentity] = em_utils:get_elements(publicUserIdentity, em_utils:get_element_childs(ServiceInstanceProfile)),
     case em_utils:get_element_text(PublicUserIdentity) of
         undefined -> profile;
