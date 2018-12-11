@@ -57,6 +57,7 @@ create(Id, Message) ->
 modify(Id, Message) ->
     User = get_user(Message),
     case get_endpoint(Message) of
+        profile -> em_db:set_white_event(Id);
         undefined ->
             logger:debug("Modify user, no endpoint"),
             Attrs = #{
@@ -427,9 +428,14 @@ get_endpoint(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [Endpoint] = em_utils:get_elements(endpoint, InsideCommand),
     IsNil =  em_utils:get_element_attributes('xsi:nil', Endpoint) =:= "true",
-    case IsNil of
-        true -> undefined;
-        false -> get_endpoint(access, Endpoint)
+     
+    case sip_alias_exists(Message) of
+        true ->
+            case IsNil of
+                true -> undefined;
+                false -> get_endpoint(access, Endpoint)
+            end;
+        false -> profile
     end.
     
 get_endpoint(access, Endpoint) ->
@@ -463,6 +469,24 @@ get_group(Message) ->
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
     em_utils:get_element_text(GroupId).
 
+sip_alias_exists(Message) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [SipAliasList] = em_utils:get_elements(sipAliasList, InsideCommand),
+    [SipAlias] = em_utils:get_elements(sipAlias, em_utils:get_element_childs(SipAliasList)),
+    Alias = em_utils:get_element_text(SipAlias),
+    
+    SipAliasIsNil =  em_utils:get_element_attributes('xsi:nil', SipAliasList) =:= "true",
+    
+    case SipAliasIsNil of
+        true -> 
+            true;
+        false ->
+            %logger:debug("DEBUG SipAlias value is ~p", [Alias]),
+            case Alias of
+                undefined -> false;
+                _ -> true
+            end
+        end.
     
 fail_event(Id) ->
     em_db:fail_event(Id).
