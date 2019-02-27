@@ -159,13 +159,12 @@ modify_voiceportal(Id, Message) ->
     User = fix_nil(PubId),    
     Attrs = #{
         pubid       => fix_nil(PubId),
-        phone       => get_phone(Message),
+        phone       => get_vp_phone(Message),
         type        => "virtual",
         irs         => "0",
         group       => get_group(Message),
         phonecontext=> "tg.gl" 
     },
-    
     process(modify_vp, Id, User, Attrs).
     
     
@@ -463,7 +462,13 @@ get_phone(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [PhoneNumber] = em_utils:get_elements(phoneNumber, InsideCommand),
     em_utils:get_element_text(PhoneNumber).
-
+    
+get_vp_phone(Message) ->
+    InsideCommand = em_utils:get_element_childs(Message),
+    [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
+    [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)), 
+    em_utils:get_element_text(PhoneNumber).
+       
 get_group(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [GroupId] = em_utils:get_elements(groupId, InsideCommand),
