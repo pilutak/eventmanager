@@ -22,7 +22,8 @@
         create_trunk/2, 
         modify_voiceportal/2, 
         create_ims_association/3, 
-        modify_ims_association/3, 
+        modify_ims_association/3,
+        modify_ims_association_context/3,  
         delete_ims_association/3, 
         set_sip_password/3, 
         modify_vp/3]).
@@ -57,7 +58,18 @@ create(Id, Message) ->
 modify(Id, Message) ->
     User = get_user(Message),
     case get_endpoint(Message) of
-        profile -> em_db:set_white_event(Id);
+        profile -> 
+            case get_phonecontext(Message) =:= em_srd:get_phonecontext(User) of
+                    true -> em_db:set_white_event(Id);
+                    false ->
+                        Attrs = #{
+                            type  => "user",
+                            irs   => "1",
+                            phonecontext => get_phonecontext(Message)
+                        },
+                        process(modify_ims_association_context, Id, User, Attrs)
+            end;
+            
         undefined ->
             logger:debug("Modify user, no endpoint"),
             Attrs = #{
@@ -196,6 +208,14 @@ modify_ims_association(C, User, Attrs) ->
             plan_type(C, User, Attrs),
             plan_pubid(C, User, Attrs),
             plan_phone(C, User, Attrs),
+            plan_phonecontext(C, User, Attrs),
+            ok
+    end.
+
+modify_ims_association_context(C, User, Attrs) ->
+    case em_srd:user_exists(User) of
+        false -> exit(non_existing_user);
+        true ->
             plan_phonecontext(C, User, Attrs),
             ok
     end.
