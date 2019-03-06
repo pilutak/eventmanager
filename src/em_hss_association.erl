@@ -77,7 +77,7 @@ create_association(User, Attrs) ->
     MoType = "IMSAssociation@http://schemas.ericsson.com/ma/HSS/",
     MoId = em_utils:md5_hex(User),
     PubId = maps:get(pubid, Attrs, User),
-    Password = maps:get(password, Attrs, em_utils:randchar(14)),
+    Password = maps:get(pass, Attrs, em_utils:randchar(14)),
     ServiceProfileId = maps:get(sprofile, Attrs, PubId),
     Type = maps:get(type, Attrs),    
     ConfiguredServiceProfileId = maps:get(csprofile, Attrs, em_utils:serviceprofile(Type)),
