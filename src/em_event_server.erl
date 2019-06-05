@@ -80,7 +80,7 @@ handle_call({process_event, Event}, _From, State) ->
     {UserId, CommandType, Message} = top_parser(Event),
     Id = persist_event(UserId, CommandType, Event),    
     Reply = em_event:process(Id, CommandType, Message),
-    {reply, Reply, State};
+    {reply, Reply, State, infinity};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
