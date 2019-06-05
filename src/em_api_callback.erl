@@ -11,7 +11,9 @@ handle(Req, _Args) ->
 handle('GET',[<<"alivecheck">>], _Req) ->
     %% Reply with a normal response. 'ok' can be used instead of '200'
     %% to signal success.
-    Json = jsx:encode([{<<"is_alive">>,true}]),
+    X = em_db:get_event_status(),
+    CountFailedEvents = list_to_integer(binary_to_list(X)),
+    Json = jsx:encode([{<<"is_alive">>,true}, {<<"failed_events">>,CountFailedEvents}]),
     {ok, [], Json};
 
 

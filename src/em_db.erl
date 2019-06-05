@@ -22,7 +22,8 @@
     get_event/1,
     complete_event/1,
     set_white_event/1,
-    fail_event/1
+    fail_event/1,
+    get_event_status/0
 ]).
 
 
@@ -97,6 +98,11 @@ get_event(Id) ->
             [event_to_json(P) || P <- Rows]
     end.
 
+get_event_status() ->
+    C = connect(),
+    {ok, _, [{Count}]} = epgsql:squery(C, "SELECT COUNT(id) FROM em_event WHERE status = 'failed'"),
+    epgsql:close(C),
+    Count.
 
 complete_event(Id) ->
     C = connect(),
