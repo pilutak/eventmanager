@@ -198,6 +198,7 @@ create_ims_association(C, User, Attrs) ->
     
 delete_ims_association(C, User, Attrs) ->
     delete_voicemail(C, User, Attrs),
+    delete_blf(C, User, Attrs),
     delete_phone(C, User, Attrs),
     delete_user(C, User, Attrs).
     
@@ -348,6 +349,15 @@ delete_voicemail(_C, User, _Attrs) ->
             logger:debug("Deleting voivemail account ~p", [VmailUser]),
             ok = em_srd:delete_vmail(User),
             em_surgemail:delete_account(#{user => VmailUser})
+    end.
+
+delete_blf(C, User, _Attrs) ->
+    case em_srd:get_blf_user(User) of
+        undefined -> ok;
+        BLFUser -> 
+            logger:debug("Deleting BLF user ~p", [BLFUser]),
+            ok = em_srd:delete_blf(User),
+            em_hss_association:delete(BLFUser, C)
     end.
 
 

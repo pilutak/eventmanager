@@ -34,7 +34,10 @@
     get_phonecontext/1,
     set_phonecontext/2,
     get_type/1,
-    user_exists/1
+    user_exists/1,
+    get_blf_user/1,
+    set_blf_user/2,
+    delete_blf/1
     ]).
 
 
@@ -158,6 +161,31 @@ get_vmail_user(UserId) ->
                   _-> binary_to_list(R)
              end
     end.
+
+get_blf_user(UserId) ->
+    C = connect(),
+    {ok, _, Rows} = epgsql:equery(C, "select trim(blf_user) from srd_user where id=$1", [UserId]),
+    ok = epgsql:close(C),
+    case Rows of
+        [] -> undefined;
+        _ -> [{R}] = Rows,
+              case R of
+                  null -> undefined;
+                  _-> binary_to_list(R)
+             end
+    end.
+
+set_blf_user(UserName, BlfUser) ->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set blf_user=$2, updated=timezone('utc', now()) where id=$1", [UserName, BlfUser]),
+    epgsql:close(C).
+
+delete_blf(UserId)->
+    C = connect(),
+    {ok, _} = epgsql:equery(C, "update srd_user set blf_user= NULL, updated=timezone('utc', now()) where id=$1", [UserId]),
+    epgsql:close(C).
+
+
 
 get_vmail_pass(UserId) ->
     C = connect(),

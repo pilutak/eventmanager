@@ -65,6 +65,8 @@ process(Id, "GroupVoiceMessagingGroupModifyVoicePortalRequest", Message) ->
     em_user:modify_voiceportal(Id, Message);
 process(Id, "UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest", Message) ->
     em_voicemail:modify(Id, Message);
+process(Id, "UserBusyLampFieldModifyRequest", Message) ->
+    em_blf:modify(Id, Message);    
 
 % Ignoring status events
 process(ignored, _CommandType, _Message) ->
