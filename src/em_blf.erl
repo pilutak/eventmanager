@@ -67,16 +67,17 @@ modify_blf(C, User, Attrs) ->
     logger:debug("BLF ATTRS: ~p", [Attrs]),    
     URI = em_srd:get_blf_user(User),
     NewURI = maps:get(uri, Attrs),
-    case plan_blf(URI, NewURI) of
-        ignore -> ok;
+    case plan_blf(User, URI, NewURI) of
+        ignore -> 
+            ok;
         create -> 
             em_srd:set_blf_user(User, NewURI),
             ok = em_hss_association:create(NewURI, Attrs, C); 
-        modify -> 
+        modify ->
             em_hss_association:delete(URI, C),
             ok = em_hss_association:create(NewURI, Attrs, C),
             em_srd:set_blf_user(User, NewURI);
-        delete -> 
+        delete ->
             em_srd:delete_blf(User),
             em_hss_association:delete(URI, C)
     end.
@@ -114,13 +115,23 @@ get_user(Message) ->
     [U] = em_utils:get_elements(userId, InsideCommand),
     em_utils:get_element_text(U).
 
-plan_blf(_X, _X) ->
+plan_blf(_User, _URI, _URI) ->
+    logger:debug("BLF ignore because new and old URI is identical"),
     ignore;
-plan_blf(_X, undefined) ->
+plan_blf(_NewURI, undefined, _NewURI) ->
+    logger:debug("BLF ignore because new URI matches userID"),
+    ignore;    
+plan_blf(_NewURI, _URI, _NewURI) ->
+    logger:debug("BLF ignore because new URI matches userID"),
+    ignore;
+plan_blf(_User, _URI, undefined) ->
+    logger:debug("BLF delete because new URI is undefined"),
     delete;
-plan_blf(undefined, _Y) ->
+plan_blf(_User, undefined, _NewURI) ->
+    logger:debug("BLF create"),
     create;
-plan_blf(_X, _Y) ->
+plan_blf(_User, _URI, _NewURI) ->
+    logger:debug("BLF modify"),
     modify.
 
 
