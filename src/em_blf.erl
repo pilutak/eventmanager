@@ -116,17 +116,17 @@ get_user(Message) ->
     em_utils:get_element_text(U).
 
 plan_blf(_User, _URI, _URI) ->
-    logger:debug("BLF ignore because new and old URI is identical"),
+    logger:debug("BLF ignore because new and old URI is identical or undefined"),
     ignore;
 plan_blf(_NewURI, undefined, _NewURI) ->
     logger:debug("BLF ignore because new URI matches userID"),
     ignore;    
-plan_blf(_NewURI, _URI, _NewURI) ->
-    logger:debug("BLF ignore because new URI matches userID"),
-    ignore;
 plan_blf(_User, _URI, undefined) ->
     logger:debug("BLF delete because new URI is undefined"),
     delete;
+plan_blf(_NewURI, _URI, _NewURI) ->
+    logger:debug("BLF delete because new URI matches userID and URI exists"),
+    delete;    
 plan_blf(_User, undefined, _NewURI) ->
     logger:debug("BLF create"),
     create;
