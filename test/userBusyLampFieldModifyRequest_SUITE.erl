@@ -115,7 +115,9 @@
      modify_blf_set_uri,
      modify_blf_delete_uri,
      modify_blf_update_uri,
-     modify_blf_uri_not_updated
+     modify_blf_uri_not_updated,
+     modify_blf_uri_changed_to_user,
+     modify_blf_uri_to_user
      ].   
      
  %%--------------------------------------------------------------------
@@ -131,7 +133,12 @@
  modify_blf_update_uri() ->
     []. 
  modify_blf_uri_not_updated() ->
+    [].
+ modify_blf_uri_changed_to_user() ->
     [].     
+ modify_blf_uri_to_user() ->
+    [].     
+
  %%--------------------------------------------------------------------
  %% Function: TestCase(Config0) ->
  %%               ok | exit() | {skip,Reason} | {comment,Comment} |
@@ -167,6 +174,17 @@ modify_blf_delete_uri(Config) ->
      Uri1 = ?config(uri1, Config),
      ok = em_event_server:process_event(modify_set_uri(User, Uri1)),
      ok = em_event_server:process_event(modify_set_uri(User, Uri1)).
+
+ modify_blf_uri_changed_to_user(Config) ->     
+     User = ?config(user, Config),
+     Uri1 = ?config(uri1, Config),
+     ok = em_event_server:process_event(modify_set_uri(User, Uri1)),
+     ok = em_event_server:process_event(modify_set_uri(User, User)).
+
+ modify_blf_uri_to_user(Config) ->     
+     User = ?config(user, Config),
+     ok = em_event_server:process_event(modify_set_uri(User, User)).
+
 
 %%%===================================================================
 %%% Internal functions
