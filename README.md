@@ -13,6 +13,7 @@ The EMA handles following Broadworks data objects
   - Meet-Me conferences
   - Voiceportals
   - Voicemails
+  - BLF (Busy Lamp Field) 
 
 ## Installation:
 Installation path
