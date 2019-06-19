@@ -245,7 +245,7 @@ plan_type(C, User, Attrs) ->
     Plan = plan_type_change(Type, CurrentType),
     case Plan of
         ignore ->
-            logger:debug("No type plan found ~p", [User]),
+            logger:debug("Type plan returned ignore ~p", [User]),
             ok;
         update -> change_usertype(C, User, Attrs, Type)
     end.
@@ -257,7 +257,7 @@ plan_phonecontext(C, User, Attrs) ->
     logger:debug("Phonecontext plan for user ~p is ~p", [User, Plan]),
     case Plan of
         ignore ->
-            logger:debug("No phonecontext plan found ~p", [User]),
+            logger:debug("Phonecontext plan returned ignore ~p", [User]),
             ok;
         update -> update_phonecontext(C, User, Attrs)
     end.
@@ -268,7 +268,7 @@ plan_pubid(C, User, Attrs) ->
     Plan = plan_pubid_change(PubId, CPubId),
     case Plan of
         ignore ->
-            logger:debug("No pubId plan found ~p", [User]),
+            logger:debug("PubId plan returned ignore ~p", [User]),
             ok;
         update -> update_pubid(C, User, Attrs)
     end.
@@ -280,7 +280,7 @@ plan_phone(C, User, Attrs) ->
     
     case Plan of
         ignore ->
-            logger:debug("No phone plan found ~p", [User]),
+            logger:debug("Phone plan returned ignore ~p", [User]),
             ok;
         delete -> delete_phone(C, User, Attrs);
         update -> update_phone(C, User, Attrs)
@@ -491,7 +491,19 @@ get_user(Message) ->
 get_phone(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [PhoneNumber] = em_utils:get_elements(phoneNumber, InsideCommand),
-    em_utils:get_element_text(PhoneNumber).
+
+    PhoneIsNil =  em_utils:get_element_attributes('xsi:nil', PhoneNumber) =:= "true",
+    
+    case PhoneIsNil of
+        true -> 
+            nil;
+        false ->
+            case PhoneNumber of
+                undefined -> undefined;
+                _ -> em_utils:get_element_text(PhoneNumber)
+            end
+    end.
+
     
 get_vp_phone(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -539,6 +551,8 @@ plan_type_change(_X, _Y) ->
 plan_phone_change(X, X) ->
     ignore;
 plan_phone_change(undefined, _X) ->
+    ignore;
+plan_phone_change(nil, _X) ->
     delete;
 plan_phone_change(_X, undefined) ->
     update;

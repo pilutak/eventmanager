@@ -189,7 +189,18 @@ get_phone(Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
     [ServiceInstanceProfile] = em_utils:get_elements(serviceInstanceProfile, InsideCommand),
     [PhoneNumber] = em_utils:get_elements(phoneNumber, em_utils:get_element_childs(ServiceInstanceProfile)),
-    em_utils:get_element_text(PhoneNumber).
+
+    PhoneIsNil =  em_utils:get_element_attributes('xsi:nil', PhoneNumber) =:= "true",
+    
+    case PhoneIsNil of
+        true -> 
+            nil;
+        false ->
+            case PhoneNumber of
+                undefined -> undefined;
+                _ -> em_utils:get_element_text(PhoneNumber)
+            end
+    end.    
 
 get_pubid(User, Message) ->
     InsideCommand = em_utils:get_element_childs(Message),
@@ -257,11 +268,13 @@ fail_event(Id) ->
 plan_phone_change(X, X) ->
     ignore;
 plan_phone_change(undefined, _X) ->
+    ignore;
+plan_phone_change(nil, _X) ->
     delete;
 plan_phone_change(_X, undefined) ->
     update;
 plan_phone_change(_X, _Y) ->
-    update.   
+    update.  
     
 plan_pubid_change(undefined, _Y) ->
     ignore;
