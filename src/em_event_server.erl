@@ -167,6 +167,8 @@ persist_event(_ ,ignored, undefined) ->
     ignored;
 persist_event(_ ,ignored, _) ->
     ignored;
+persist_event("*XS localhost Admin*" ,ignored, _) ->
+    ignored;    
 persist_event(UserId, CommandType, Data) ->
     logger:debug("Persisting event: ~p, ~p, ~p", [UserId, CommandType, Data]),
     em_db:insert_event(UserId, CommandType, Data).
