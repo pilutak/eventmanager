@@ -78,9 +78,20 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({process_event, Event}, _From, State) ->
     {UserId, CommandType, Message} = top_parser(Event),
-    Id = persist_event(UserId, CommandType, Event),    
-    Reply = em_event:process(Id, CommandType, Message),
-    {reply, Reply, State, infinity};
+    
+    % We have to verify if the userId exists since some commands do not contain userId,
+    % when missing, the userId from the top level document is used.
+    case UserId of
+        undefined -> 
+            Id = persist_event(get_user_id(Event), CommandType, Event),    
+            Reply = em_event:process(Id, CommandType, Message),
+            {reply, Reply, State, infinity};
+        _->
+            Id = persist_event(UserId, CommandType, Event),    
+            Reply = em_event:process(Id, CommandType, Message),
+            {reply, Reply, State, infinity}
+    end;
+
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -145,12 +156,22 @@ top_parser(Data) ->
     parser_message(em_utils:get_type_message(ParsedMessage), ParsedMessage).
 
 parser_message('BroadsoftOCIReportingDocument', Data)->
-    case em_utils:get_cdata(Data) of
-	[] ->
-	    {ignored, ignored,undefined};
-	CDATA ->
-	    {ParsedCDATA,_} = xmerl_scan:string(CDATA),
-	    parser_message(em_utils:get_type_message(ParsedCDATA), ParsedCDATA)
+    [Command|_Other_ignored]=em_utils:get_elements(command,em_utils:get_element_childs(Data)),
+    [User] = em_utils:get_elements(userId, em_utils:get_element_childs(Command)),
+    UserId = em_utils:get_element_text(User),
+    
+    % We are ignoring all events coming from the AS itself, this is events
+    % from the user *XS localhost Admin*.
+    case UserId of 
+        "*XS localhost Admin*" -> {ignored, ignored, undefined};
+        _->
+            case em_utils:get_cdata(Data) of
+	            [] ->
+	                {ignored, ignored, undefined};
+	            CDATA ->
+	                {ParsedCDATA,_} = xmerl_scan:string(CDATA),
+	                parser_message(em_utils:get_type_message(ParsedCDATA), ParsedCDATA)
+            end
     end;
 
 parser_message('BroadsoftDocument', Data)->
@@ -158,7 +179,7 @@ parser_message('BroadsoftDocument', Data)->
     [User|_Other_ignored]=em_utils:get_elements(userId,em_utils:get_element_childs(Data)),
     CommandType = em_utils:get_element_attributes('xsi:type',Command),
     UserId = em_utils:get_element_text(User),
-    {fix_userid(UserId), CommandType, Command};
+    {UserId, CommandType, Command};
     
 parser_message(_,_)->
     {ignored, ignored, undefined}.
@@ -167,14 +188,12 @@ persist_event(_ ,ignored, undefined) ->
     ignored;
 persist_event(_ ,ignored, _) ->
     ignored;
-persist_event("*XS localhost Admin*" ,ignored, _) ->
-    ignored;    
 persist_event(UserId, CommandType, Data) ->
     logger:debug("Persisting event: ~p, ~p, ~p", [UserId, CommandType, Data]),
     em_db:insert_event(UserId, CommandType, Data).
-
-fix_userid(UserId) ->
-    case UserId of
-        undefined -> "*XS localhost Admin*";
-        _-> UserId
-    end.
+    
+get_user_id(Event) ->
+    {ParsedMessage,_} = xmerl_scan:string(Event),
+    [Command|_Other_ignored]=em_utils:get_elements(command,em_utils:get_element_childs(ParsedMessage)),
+    [User] = em_utils:get_elements(userId, em_utils:get_element_childs(Command)),
+    em_utils:get_element_text(User).
