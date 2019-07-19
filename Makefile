@@ -1,6 +1,6 @@
 PROJECT = em
 PROJECT_DESCRIPTION = Middleware for BW/IMS provisioning
-PROJECT_VERSION = 2.0.20
+PROJECT_VERSION = 2.0.21
 
 DEPS = jsx epgsql elli econfig
 
