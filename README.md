@@ -1,5 +1,5 @@
 # eventmanager
-[![Build Status](https://travis-ci.org/timezone4/eventmanager.svg)](https://travis-ci.org/timezone4/eventmanager)
+[![Build Status](https://travis-ci.org/middleaware/eventmanager.svg)](https://travis-ci.org/middleaware/eventmanager)
 
 A Broadworks OCI-R Client application that keep connections to one or more Broadsoft Broadworks application servers
 where it recieves OCI-R events. Relevant business logic is executed, and provisioning request is send to the Ericsson IMS core (HSS-FE and ENUM-FE) via Ericsson EMA/PG. Some requestes is sent directly to the voicemail application. 
