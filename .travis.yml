@@ -12,6 +12,6 @@ deploy:
   file: _rel/em/em-2.0.22.tar.gz
   skip_cleanup: true
   on:
-    repo: timezone4/eventmanager
+    repo: middleaware/eventmanager
     tags: true
 
