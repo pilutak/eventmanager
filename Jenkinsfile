@@ -6,7 +6,7 @@ pipeline{
             steps {
             // Wipe the workspace so we are building completely clean
             deleteDir()
-                git url: 'https://github.com/timezone4/eventmanager.git'
+                git url: 'https://github.com/middleaware/eventmanager.git'
             }
         }
         stage ("Compile") {
