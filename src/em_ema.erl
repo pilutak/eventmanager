@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Author Thomas Elsgaard <thomas.elsgaard@timezone4.com>
+%%% @Author Thomas Elsgaard <thomas.elsgaard@middleaware.dk>
 %%% @copyright (C) 2018, Thomas Elsgaard
 %%% @doc
 %%%
