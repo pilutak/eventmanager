@@ -12,6 +12,6 @@ deploy:
   file: _rel/em/em-2.0.29.tar.gz
   skip_cleanup: true
   on:
-    repo: middleaware/eventmanager
+    repo: telsgaard/eventmanager
     tags: true
 
