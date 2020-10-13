@@ -230,7 +230,19 @@ em_service:
     UserVoiceMessagingUserModifyAdvancedVoiceManagementRequest -> Modify user in SRD and surgemail (create, modify, delete) 
     
 # Status
-EM currently support a limited subset of BW Rel 21 sp3 OCI-R events, and the Ericsson layered architecture.
+EM currently support a limited subset of BW Rel 21 sp3, BW Rel 23 OCI-R events, and the Ericsson layered architecture.
+and is known to work with following OCI-R events:
+
+AddUserRequest17sp4
+AddUserRequest22
+UserModifyRequest17sp4
+UserModifyRequest22
+GroupAutoAttendantAddInstanceRequest20
+GroupAutoAttendantModifyInstanceRequest20
+GroupMeetMeConferencingAddInstanceRequest19
+GroupCallCenterAddInstanceRequest22
+GroupCallCenterModifyInstanceRequest22
+(some to come.)
 
 # Tests
 
