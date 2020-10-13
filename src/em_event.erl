@@ -20,40 +20,41 @@
 
 %%%===================================================================
 %%% API
+%%% We remove all version specific commands according to em_event_server.erl, line 180.
 %%%===================================================================
-process(Id, "GroupAutoAttendantAddInstanceRequest20", Message) ->
+process(Id, "GroupAutoAttendantAddInstanceRequest", Message) ->
     em_service:create(Id, Message);
-process(Id, "GroupAutoAttendantModifyInstanceRequest20", Message) ->
+process(Id, "GroupAutoAttendantModifyInstanceRequest", Message) ->
     em_service:modify(Id, Message);
 process(Id, "GroupAutoAttendantDeleteInstanceRequest", Message) ->
     em_service:delete(Id, Message);
-process(Id, "GroupHuntGroupAddInstanceRequest20", Message) ->
+process(Id, "GroupHuntGroupAddInstanceRequest", Message) ->
     em_service:create(Id, Message);
 process(Id, "GroupHuntGroupModifyInstanceRequest", Message) ->
     em_service:modify(Id, Message);
 process(Id, "GroupHuntGroupDeleteInstanceRequest", Message) ->
     em_service:delete(Id, Message);
-process(Id, "GroupCallCenterAddInstanceRequest19", Message) ->
+process(Id, "GroupCallCenterAddInstanceRequest", Message) ->
     em_service:create(Id, Message);
-process(Id, "GroupCallCenterModifyInstanceRequest19", Message) ->
+process(Id, "GroupCallCenterModifyInstanceRequest", Message) ->
     em_service:modify(Id, Message);
 process(Id, "GroupCallCenterDeleteInstanceRequest", Message) ->
     em_service:delete(Id, Message);
-process(Id, "GroupMeetMeConferencingAddInstanceRequest19", Message) ->
+process(Id, "GroupMeetMeConferencingAddInstanceRequest", Message) ->
     em_service:create(Id, Message);
 process(Id, "GroupMeetMeConferencingModifyInstanceRequest", Message) ->
     em_service:modify(Id, Message);
 process(Id, "GroupMeetMeConferencingDeleteInstanceRequest", Message) ->
     em_service:delete(Id, Message);
-process(Id, "UserAddRequest17sp4", Message) ->
+process(Id, "UserAddRequest", Message) ->
     em_user:create(Id, Message);
-process(Id, "UserModifyRequest17sp4", Message) ->
+process(Id, "UserModifyRequest", Message) ->
     em_user:modify(Id, Message);
 process(Id, "UserDeleteRequest", Message) ->
     em_user:delete(Id, Message);
 process(Id, "UserAuthenticationModifyRequest", Message) ->
     em_user:set_password(Id, Message);
-process(Id, "GroupTrunkGroupAddInstanceRequest21", Message) ->
+process(Id, "GroupTrunkGroupAddInstanceRequest", Message) ->
     em_user:create_trunk(Id, Message);
 process(Id, "GroupDeleteRequest", Message) ->
     em_user:delete_group(Id, Message);
