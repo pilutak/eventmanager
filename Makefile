@@ -1,6 +1,6 @@
 PROJECT = em
 PROJECT_DESCRIPTION = Middleware for BW/IMS provisioning
-PROJECT_VERSION = 2.0.29
+PROJECT_VERSION = 2.0.30
 
 DEPS = jsx epgsql elli econfig
 dep_jsx = git https://github.com/talentdeficit/jsx.git v2.9.0
