@@ -177,7 +177,14 @@ parser_message('BroadsoftOCIReportingDocument', Data)->
 parser_message('BroadsoftDocument', Data)->
     [Command|_Other_ignored]=em_utils:get_elements(command,em_utils:get_element_childs(Data)),
     [User|_Other_ignored]=em_utils:get_elements(userId,em_utils:get_element_childs(Data)),
-    CommandType = em_utils:get_element_attributes('xsi:type',Command),
+    %%%===================================================================
+    %%% We split the string from em_utils:get_element_attributes('xsi:type',Command) eg. UserAddRequest17sp4 to two variables CommandType and _CommandType_ignore
+    %%% by using "string:take(String, lists:seq($0,$9), true, leading),"
+    %%% CommandType=UserAddRequest
+    %%% _CommandType_ignore=17sp4
+    %%% em_event.erl commandlist needs to be updated accordingly.
+    %%%===================================================================
+    {CommandType,_CommandType_ignore} = string:take(em_utils:get_element_attributes('xsi:type',Command), lists:seq($0,$9), true, leading),
     UserId = em_utils:get_element_text(User),
     {UserId, CommandType, Command};
     
